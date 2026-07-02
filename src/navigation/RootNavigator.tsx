@@ -6,6 +6,8 @@ import { MapScreen } from "../screens/MapScreen";
 import { ListScreen } from "../screens/ListScreen";
 import { DetailScreen } from "../screens/DetailScreen";
 import { IconPickerScreen } from "../screens/IconPickerScreen";
+import { AlarmsScreen } from "../screens/AlarmsScreen";
+import { AlarmLocationScreen } from "../screens/AlarmLocationScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { AppTabBar } from "./AppTabBar";
 import type { RootStackParamList, TabParamList } from "./types";
@@ -22,7 +24,7 @@ function Tabs() {
     >
       <Tab.Screen name="map" component={MapScreen} />
       <Tab.Screen name="list" component={ListScreen} />
-      <Tab.Screen name="alarm">{() => <PlaceholderScreen title="Alarmes" step="étape 5" />}</Tab.Screen>
+      <Tab.Screen name="alarm" component={AlarmsScreen} />
       <Tab.Screen name="stats">{() => <PlaceholderScreen title="Stats" step="étape 6" />}</Tab.Screen>
       <Tab.Screen name="me">{() => <PlaceholderScreen title="Profil" step="étape 8" />}</Tab.Screen>
     </Tab.Navigator>
@@ -42,6 +44,7 @@ export function RootNavigator() {
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="Detail" component={DetailScreen} />
         <Stack.Screen name="IconPicker" component={IconPickerScreen} />
+        <Stack.Screen name="AlarmLocation" component={AlarmLocationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

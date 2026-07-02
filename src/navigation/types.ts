@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { AlarmEventVM } from "../types/alarm";
 
 /** Onglets (états `screen` maquette). Noms alignés sur TabId. */
 export type TabParamList = {
@@ -14,4 +15,5 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   Detail: { vehicleId: number };
   IconPicker: { vehicleId: number };
+  AlarmLocation: { alarm: AlarmEventVM };
 };

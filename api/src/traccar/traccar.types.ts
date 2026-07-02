@@ -13,6 +13,20 @@ export interface TraccarDevice {
   category?: string | null;
 }
 
+export interface TraccarEvent {
+  id: number;
+  type: string; // deviceOverspeed | geofenceEnter | geofenceExit | ignitionOn | alarm | ...
+  eventTime: string; // ISO
+  deviceId: number;
+  positionId?: number;
+  geofenceId?: number;
+  attributes: {
+    alarm?: string; // tow | sos | powerCut | lowBattery ...
+    speed?: number;
+    [k: string]: unknown;
+  };
+}
+
 export interface TraccarPosition {
   id: number;
   deviceId: number;

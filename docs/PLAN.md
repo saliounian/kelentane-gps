@@ -8,9 +8,9 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 1 | Primitives `/ui` extraites de la maquette | ✅ |
 | 2 | Infra : Traccar (docker), API façade Nest, Supabase (schéma + RLS) | ✅ |
 | 3 | Liste + carte sur positions réelles | ✅ (polling) |
-| 4 | Fiche détail complète + commandes réelles (ACK) | 🚧 |
-| 5 | Édition persistée (jointure base app) + détails dispositif | ⬜ |
-| 6 | Alarmes / anomalies + push | ⬜ |
+| 4 | Fiche détail complète + commandes réelles (ACK) | ✅ |
+| 5 | Édition persistée (jointure base app) + détails dispositif | ✅ |
+| 6 | Alarmes / anomalies + push | ✅ (push : envoi différé) |
 | 7 | Km / Stats / Trajet via reports Traccar | ⬜ |
 | 8 | Géofences CRUD + règles | ⬜ |
 | 9 | Partage par jeton + auth + mot de passe commandes | ⬜ |
@@ -25,6 +25,13 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
   La façade doit ouvrir `GET /api/socket` Traccar (session serveur) et rediffuser
   positions + événements au mobile (WS/SSE), sans jamais exposer Traccar au client.
   À faire avant la prod réelle — pas « si le temps le permet ».
+
+- **[BLOQUANT] Envoi réel des notifications push.** L'étape 6 livre le scaffold
+  (enregistrement des jetons `push_tokens`, prefs). L'ENVOI (FCM/APNs via Expo)
+  n'est pas branché : il exige des credentials (projet FCM, clé serveur, projectId
+  EAS) + un dev-build. Sans ça, les alarmes ne partent pas vers le téléphone.
+  À faire avant la prod. Côté API : un worker qui, sur événement Traccar / calcul
+  d'anomalie, pousse via Expo Push API vers les jetons du client (selon prefs).
 
 ## Décisions arrêtées (rappel)
 

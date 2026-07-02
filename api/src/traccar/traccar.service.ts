@@ -2,7 +2,7 @@ import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
-import type { TraccarDevice, TraccarPosition } from "./traccar.types";
+import type { TraccarDevice, TraccarEvent, TraccarPosition } from "./traccar.types";
 
 /**
  * Client de façade vers Traccar. Les identifiants Traccar vivent UNIQUEMENT
@@ -60,6 +60,16 @@ export class TraccarService {
   /** Toutes les dernières positions connues (un point par device). */
   getPositions(): Promise<TraccarPosition[]> {
     return this.get<TraccarPosition[]>("/api/positions");
+  }
+
+  /** Événements (reports/events) sur une fenêtre, pour un ou plusieurs devices. */
+  getEvents(deviceIds: number[], fromIso: string, toIso: string): Promise<TraccarEvent[]> {
+    if (deviceIds.length === 0) return Promise.resolve([]);
+    const params = new URLSearchParams();
+    params.set("from", fromIso);
+    params.set("to", toIso);
+    for (const id of deviceIds) params.append("deviceId", String(id));
+    return this.get<TraccarEvent[]>(`/api/reports/events?${params.toString()}`);
   }
 
   /** Devices + positions en une passe, résilient si Traccar est injoignable. */
