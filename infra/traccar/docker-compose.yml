@@ -1,0 +1,29 @@
+# Traccar de test (cœur GPS, protocole GT06 pour boîtiers GT06N).
+# Handoff §9.3 / Annexe A.3. Jamais exposé au mobile : seule l'API façade le joint.
+#
+# Démarrage :  docker compose -f infra/traccar/docker-compose.yml up -d
+# UI web/admin : http://localhost:8082  (créer le 1er compte admin au 1er accès)
+# Port GT06     : 5023/tcp  (à ouvrir/rediriger vers les boîtiers)
+#
+# Persistance via volume nommé (base H2 embarquée par défaut — suffisant en test).
+
+services:
+  traccar:
+    image: traccar/traccar:6.5-alpine
+    container_name: kelentane-traccar
+    restart: unless-stopped
+    ports:
+      - "8082:8082"   # UI + API REST
+      - "5023:5023"   # protocole GT06 (GT06N)
+    volumes:
+      - traccar-data:/opt/traccar/data
+      # Optionnel : config custom (décommenter si besoin d'ajuster traccar.xml)
+      # - ./traccar.xml:/opt/traccar/conf/traccar.xml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  traccar-data:
