@@ -13,7 +13,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 6 | Alarmes / anomalies + push | ✅ (push : envoi différé) |
 | 7 | Km / Stats / Trajet via reports Traccar | ✅ |
 | 8 | Géofences CRUD + règles | ✅ |
-| 9 | Partage par jeton + auth + mot de passe commandes | ⬜ |
+| 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | 🚧 9a ✅ / 9b ⬜ |
 | 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | ⬜ |
 | 11 | Externaliser icônes en SVG | ⬜ |
 
@@ -32,6 +32,14 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
   EAS) + un dev-build. Sans ça, les alarmes ne partent pas vers le téléphone.
   À faire avant la prod. Côté API : un worker qui, sur événement Traccar / calcul
   d'anomalie, pousse via Expo Push API vers les jetons du client (selon prefs).
+
+## Config Supabase requise (côté humain, dashboard)
+
+- **[REQUIS 9a] Désactiver « Confirm email »** (Auth → Providers → Email) : les
+  identités sont des emails synthétiques `{username}@kelentane.app` non
+  délivrables ; sans ça, pas d'accès immédiat après inscription.
+- **[REQUIS 9] Activer « Leaked password protection »** (advisor sécurité ouvert).
+- Décision identité : email synthétique dérivé du username.
 
 ## Décisions arrêtées (rappel)
 

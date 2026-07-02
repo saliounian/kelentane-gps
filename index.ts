@@ -1,4 +1,5 @@
 import "react-native-gesture-handler"; // doit être importé en tout premier
+import "react-native-url-polyfill/auto"; // requis par @supabase/supabase-js en RN
 import { registerRootComponent } from 'expo';
 
 import App from './App';

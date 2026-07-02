@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AlarmsModule } from "./alarms/alarms.module";
+import { AuthModule } from "./auth/auth.module";
 import { CommandsModule } from "./commands/commands.module";
 import { GeofencesModule } from "./geofences/geofences.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -22,6 +23,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     NotificationsModule,
     ReportsModule,
     GeofencesModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

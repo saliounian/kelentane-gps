@@ -12,7 +12,7 @@ import { StatsScreen } from "../screens/StatsScreen";
 import { KmScreen } from "../screens/KmScreen";
 import { TrajectoryScreen } from "../screens/TrajectoryScreen";
 import { GeofenceScreen } from "../screens/GeofenceScreen";
-import { PlaceholderScreen } from "../screens/PlaceholderScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
 import { AppTabBar } from "./AppTabBar";
 import type { RootStackParamList, TabParamList } from "./types";
 
@@ -30,7 +30,7 @@ function Tabs() {
       <Tab.Screen name="list" component={ListScreen} />
       <Tab.Screen name="alarm" component={AlarmsScreen} />
       <Tab.Screen name="stats" component={StatsScreen} />
-      <Tab.Screen name="me">{() => <PlaceholderScreen title="Profil" step="étape 8" />}</Tab.Screen>
+      <Tab.Screen name="me" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
