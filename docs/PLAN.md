@@ -12,7 +12,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 5 | Édition persistée (jointure base app) + détails dispositif | ✅ |
 | 6 | Alarmes / anomalies + push | ✅ (push : envoi différé) |
 | 7 | Km / Stats / Trajet via reports Traccar | ✅ |
-| 8 | Géofences CRUD + règles | ⬜ |
+| 8 | Géofences CRUD + règles | ✅ |
 | 9 | Partage par jeton + auth + mot de passe commandes | ⬜ |
 | 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | ⬜ |
 | 11 | Externaliser icônes en SVG | ⬜ |

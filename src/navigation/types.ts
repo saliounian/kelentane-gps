@@ -18,4 +18,5 @@ export type RootStackParamList = {
   AlarmLocation: { alarm: AlarmEventVM };
   Km: { vehicleId: number };
   Traj: { vehicleId: number };
+  Geo: { vehicleId: number };
 };

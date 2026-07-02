@@ -11,6 +11,7 @@ import { AlarmLocationScreen } from "../screens/AlarmLocationScreen";
 import { StatsScreen } from "../screens/StatsScreen";
 import { KmScreen } from "../screens/KmScreen";
 import { TrajectoryScreen } from "../screens/TrajectoryScreen";
+import { GeofenceScreen } from "../screens/GeofenceScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { AppTabBar } from "./AppTabBar";
 import type { RootStackParamList, TabParamList } from "./types";
@@ -50,6 +51,7 @@ export function RootNavigator() {
         <Stack.Screen name="AlarmLocation" component={AlarmLocationScreen} />
         <Stack.Screen name="Km" component={KmScreen} />
         <Stack.Screen name="Traj" component={TrajectoryScreen} />
+        <Stack.Screen name="Geo" component={GeofenceScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

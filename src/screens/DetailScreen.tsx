@@ -190,8 +190,7 @@ export function DetailScreen() {
             <Cmd t={t} icon={RotateCcw} label={gpsRebooting ? "Redémarrage…" : "Redémarrer GPS"} active={gpsRebooting} onPress={rebootGps} />
           </View>
           <View style={{ width: "48%" }}>
-            {/* géofence : étape 8 */}
-            <Cmd t={t} icon={Fence} label="Géofence" onPress={() => {}} />
+            <Cmd t={t} icon={Fence} label="Géofence" onPress={() => nav.navigate("Geo", { vehicleId: v.id })} />
           </View>
           <View style={{ width: "48%" }}>
             <Cmd t={t} icon={Gauge} label="Kilométrage" onPress={() => nav.navigate("Km", { vehicleId: v.id })} />

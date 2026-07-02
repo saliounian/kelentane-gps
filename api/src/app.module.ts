@@ -4,6 +4,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AlarmsModule } from "./alarms/alarms.module";
 import { CommandsModule } from "./commands/commands.module";
+import { GeofencesModule } from "./geofences/geofences.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { ReportsModule } from "./reports/reports.module";
 import { SupabaseModule } from "./supabase/supabase.module";
@@ -20,6 +21,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     AlarmsModule,
     NotificationsModule,
     ReportsModule,
+    GeofencesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

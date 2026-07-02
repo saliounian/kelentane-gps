@@ -60,6 +60,31 @@ export class TraccarService {
     return this.post("/api/commands/send", { deviceId, type });
   }
 
+  private async del(path: string, body?: unknown): Promise<void> {
+    await firstValueFrom(
+      this.http.delete(`${this.baseUrl}${path}`, {
+        headers: { Authorization: this.auth, "Content-Type": "application/json" },
+        timeout: 8000,
+        data: body,
+      }),
+    );
+  }
+
+  // ---- Géofences (Traccar geofences + permissions device↔geofence) ----
+  createGeofence(name: string, areaWkt: string): Promise<{ id: number }> {
+    return this.post<{ id: number }>("/api/geofences", { name, area: areaWkt });
+  }
+  deleteGeofence(id: number): Promise<void> {
+    return this.del(`/api/geofences/${id}`);
+  }
+  /** Lie une géofence à un device → active les événements geofenceEnter/Exit. */
+  linkGeofence(deviceId: number, geofenceId: number): Promise<unknown> {
+    return this.post("/api/permissions", { deviceId, geofenceId });
+  }
+  unlinkGeofence(deviceId: number, geofenceId: number): Promise<void> {
+    return this.del("/api/permissions", { deviceId, geofenceId });
+  }
+
   getDevices(): Promise<TraccarDevice[]> {
     return this.get<TraccarDevice[]>("/api/devices");
   }
