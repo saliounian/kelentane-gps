@@ -1,5 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
+import { DevicesService, type DevicePatch, type DeviceRow } from "../supabase/devices.service";
 import type { TraccarDevice, TraccarPosition } from "../traccar/traccar.types";
 import type { VehicleStatus, VehicleVM } from "./vehicle.vm";
 
@@ -15,13 +16,44 @@ const OFFLINE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class VehiclesService {
-  constructor(private readonly traccar: TraccarService) {}
+  constructor(
+    private readonly traccar: TraccarService,
+    private readonly devices: DevicesService,
+  ) {}
 
   async list(now: Date = new Date()): Promise<VehicleVM[]> {
     const { devices, positions } = await this.traccar.getFleet();
     const posByDevice = new Map<number, TraccarPosition>();
     for (const p of positions) posByDevice.set(p.deviceId, p);
-    return devices.map((d) => this.toVM(d, posByDevice.get(d.id), now));
+    const rows = await this.devices.getByImeis(devices.map((d) => d.uniqueId));
+    return devices.map((d) => this.merge(this.toVM(d, posByDevice.get(d.id), now), rows.get(d.uniqueId)));
+  }
+
+  /** PATCH champs métier (persistance base app). Résout l'IMEI via Traccar. */
+  async patch(id: number, patch: DevicePatch): Promise<VehicleVM> {
+    const { devices, positions } = await this.traccar.getFleet();
+    const d = devices.find((x) => x.id === id);
+    if (!d) throw new NotFoundException("Véhicule introuvable");
+    const row = await this.devices.upsertByImei(d.uniqueId, d.id, patch);
+    const pos = positions.find((p) => p.deviceId === id);
+    return this.merge(this.toVM(d, pos, new Date()), row ?? undefined);
+  }
+
+  /** Fusionne les champs métier (base app) par-dessus le VM Traccar. */
+  private merge(vm: VehicleVM, row: DeviceRow | undefined): VehicleVM {
+    if (!row) return vm;
+    return {
+      ...vm,
+      name: row.name ?? vm.name,
+      plate: row.plate ?? vm.plate,
+      type: row.type ?? vm.type,
+      sim: row.sim_operator ?? vm.sim,
+      phone: row.sim_phone ?? vm.phone,
+      iccid: row.iccid ?? vm.iccid,
+      owner: row.owner_contact ?? vm.owner,
+      iconKey: row.icon_key ?? vm.iconKey,
+      model: row.model ?? vm.model,
+    };
   }
 
   private toVM(d: TraccarDevice, p: TraccarPosition | undefined, now: Date): VehicleVM {

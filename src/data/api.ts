@@ -29,3 +29,29 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 export function fetchVehicles(signal?: AbortSignal): Promise<VehicleVM[]> {
   return getJson<VehicleVM[]>("/vehicles", signal);
 }
+
+/** Champs métier éditables persistés via PATCH /vehicles/:id. */
+export interface VehiclePatch {
+  name?: string;
+  plate?: string;
+  type?: string;
+  iconKey?: string;
+  sim?: string;
+  phone?: string;
+}
+
+/** PATCH /vehicles/:id — persiste les champs métier (base app). */
+export async function patchVehicle(id: number, patch: VehiclePatch): Promise<VehicleVM> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/vehicles/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(patch),
+    });
+  } catch (e) {
+    throw new ApiError((e as Error).message || "Réseau indisponible");
+  }
+  if (!res.ok) throw new ApiError(`Erreur ${res.status}`, res.status);
+  return (await res.json()) as VehicleVM;
+}

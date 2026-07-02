@@ -6,6 +6,7 @@ import { hexA } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
+import { patchVehicle } from "../data/api";
 import { useIconOverrides } from "../state/iconOverrides";
 import { VEH_ICON_LABELS, VEH_ICON_LIST, VEH_ICONS } from "../icons/vehicleIcons";
 import { GlassButton } from "../ui";
@@ -44,7 +45,8 @@ export function IconPickerScreen() {
               <Pressable
                 key={k}
                 onPress={() => {
-                  setIcon(params.vehicleId, k);
+                  setIcon(params.vehicleId, k); // feedback immédiat
+                  void patchVehicle(params.vehicleId, { iconKey: k }).catch(() => {}); // persistance base app
                   nav.goBack();
                 }}
                 style={{ width: "31%", alignItems: "center", gap: 6 }}

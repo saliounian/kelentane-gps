@@ -50,6 +50,8 @@ type EditableProps = {
   label: string;
   value: string;
   onChangeText: (v: string) => void;
+  /** Persistance au blur / validation (base app). */
+  onEndEditing?: () => void;
   mono?: boolean;
   last?: boolean;
 };
@@ -61,6 +63,7 @@ export function EditableRow({
   label,
   value,
   onChangeText,
+  onEndEditing,
   mono,
   last,
 }: EditableProps) {
@@ -81,6 +84,7 @@ export function EditableRow({
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onEndEditing={onEndEditing}
         style={{
           flex: 1,
           textAlign: "right",

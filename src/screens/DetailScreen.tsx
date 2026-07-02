@@ -33,7 +33,7 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
 import { sendCommand, type CommandType } from "../data/commands";
-import { ApiError } from "../data/api";
+import { ApiError, patchVehicle, type VehiclePatch } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { useIconOverrides } from "../state/iconOverrides";
 import {
@@ -80,7 +80,7 @@ export function DetailScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { params } = useRoute<RouteProp<RootStackParamList, "Detail">>();
-  const { vehicles } = useVehicles();
+  const { vehicles, refresh } = useVehicles();
   const { overrides } = useIconOverrides();
   const v = vehicles.find((x) => x.id === params.vehicleId);
 
@@ -105,6 +105,16 @@ export function DetailScreen() {
   const iconKey = overrides[v.id] ?? v.iconKey;
   const VIcon = iconForVehicle({ iconKey, type: v.type });
   const followUrl = `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=driving`;
+
+  // Persistance base app (PATCH). Échec silencieux : l'édition locale reste affichée.
+  const persist = async (patch: VehiclePatch) => {
+    try {
+      await patchVehicle(v.id, patch);
+      refresh();
+    } catch {
+      /* réseau/API indispo — champs locaux conservés */
+    }
+  };
 
   const run = async (type: CommandType, label: string, password?: string) => {
     setCmd({ state: "pending", label });
@@ -192,7 +202,7 @@ export function DetailScreen() {
         {/* détails dispositif */}
         <Label t={t}>Détails du dispositif</Label>
         <Glass t={t} dark={dark} style={{ padding: 4 }}>
-          <EditableRow t={t} icon={Car} label="Nom du dispositif" value={devName} onChangeText={setDevName} />
+          <EditableRow t={t} icon={Car} label="Nom du dispositif" value={devName} onChangeText={setDevName} onEndEditing={() => persist({ name: devName })} />
           <Pressable
             onPress={() => nav.navigate("IconPicker", { vehicleId: v.id })}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: t.line }}
@@ -215,8 +225,8 @@ export function DetailScreen() {
           <Row t={t} icon={Radio} label="Signal GSM" value={v.gsm != null ? `${v.gsm}/5` : "—"} />
           <Row t={t} icon={Satellite} label="Satellites GPS" value={v.sats != null ? `${v.sats}` : "—"} />
           <Row t={t} icon={Gauge} label="Odomètre" value={v.odo != null ? `${v.odo.toLocaleString("fr-FR")} km` : "—"} mono />
-          <EditableRow t={t} icon={CreditCard} label="Carte SIM" value={devSim} onChangeText={setDevSim} />
-          <EditableRow t={t} icon={Phone} label="Numéro de la SIM" value={devPhone} onChangeText={setDevPhone} mono />
+          <EditableRow t={t} icon={CreditCard} label="Carte SIM" value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim })} />
+          <EditableRow t={t} icon={Phone} label="Numéro de la SIM" value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
           <Row t={t} icon={Hash} label="ICCID" value={v.iccid ?? "—"} mono />
           <Row t={t} icon={UserRound} label="Contact utilisateur" value={v.owner ?? "—"} last />
         </Glass>
