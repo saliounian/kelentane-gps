@@ -13,7 +13,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 6 | Alarmes / anomalies + push | ✅ (push : envoi différé) |
 | 7 | Km / Stats / Trajet via reports Traccar | ✅ |
 | 8 | Géofences CRUD + règles | ✅ |
-| 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | 🚧 9a ✅ / 9b ⬜ |
+| 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | ✅ |
 | 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | ⬜ |
 | 11 | Externaliser icônes en SVG | ⬜ |
 
@@ -40,6 +40,16 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
   délivrables ; sans ça, pas d'accès immédiat après inscription.
 - **[REQUIS 9] Activer « Leaked password protection »** (advisor sécurité ouvert).
 - Décision identité : email synthétique dérivé du username.
+- **[IMPORTANT] Domaine synthétique = `@kelentane.com` (a des MX).** GoTrue rejette
+  à l'inscription publique les domaines sans MX (`@kelentane.app` → « invalid »).
+  Aucun email n'est envoyé (Confirm email off) ; ce sont des identités.
+- **[À surveiller] Rate limit signup GoTrue** (« email rate limit exceeded » lors
+  d'appels rapprochés). OK en usage réel ; augmenter les limites / configurer SMTP
+  si inscription en masse.
+- **[9b] Partage : enforcement multi-tenant.** L'émission/claim de jeton persiste
+  (device_shares). Le filtrage de `/vehicles` par propriétaire+partages n'est PAS
+  encore en place (l'API renvoie tous les devices Traccar, mono-tenant de dev) —
+  à brancher avec le scoping par utilisateur avant prod.
 
 ## Décisions arrêtées (rappel)
 

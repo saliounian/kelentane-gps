@@ -1,10 +1,11 @@
 import { API_URL } from "../config/env";
 import { ApiError } from "./api";
+import { authHeader } from "./authHeader";
 
 export type CommandType = "engineStop" | "engineResume" | "gpsReboot";
 export type CommandState = "success" | "offline" | "error";
 
-/** POST /vehicles/:id/commands → { ackId, state }. Lève ApiError (401 = mdp). */
+/** POST /vehicles/:id/commands (auth) → { ackId, state }. 401 = non authentifié / mdp. */
 export async function sendCommand(
   vehicleId: number,
   type: CommandType,
@@ -14,7 +15,7 @@ export async function sendCommand(
   try {
     res = await fetch(`${API_URL}/vehicles/${vehicleId}/commands`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
       body: JSON.stringify({ type, password }),
     });
   } catch (e) {

@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Bell, ChevronRight, Gauge, Globe, Hash, KeyRound, LogOut, Map, Phone, Share2, UserRound } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, Theme } from "../theme/tokens";
+import * as Clipboard from "expo-clipboard";
+import { Bell, Check, ChevronRight, Copy, Gauge, Globe, Hash, KeyRound, LogOut, Map, Phone, Share2, UserRound } from "lucide-react-native";
+import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth } from "../state/auth";
+import { useVehicles } from "../data/useVehicles";
 import { supabase } from "../data/supabase";
+import { claimShare, createShare } from "../data/shares";
 import { BottomSheet, Field, SectionLabel, Toggle } from "../ui";
 import type { LucideIcon } from "../types/models";
 
@@ -100,12 +103,7 @@ export function ProfileScreen() {
 
       <PasswordChangeSheet t={t} visible={pwdOpen} onClose={() => setPwdOpen(false)} />
 
-      <BottomSheet t={t} visible={shareOpen} onClose={() => setShareOpen(false)}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>Partager l'appareil</Text>
-        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>
-          Partage par jeton sécurisé — arrive à l'étape 9b.
-        </Text>
-      </BottomSheet>
+      <ShareSheet t={t} visible={shareOpen} onClose={() => setShareOpen(false)} />
 
       <BottomSheet t={t} visible={byeOpen} onClose={() => setByeOpen(false)}>
         <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>Se déconnecter ?</Text>
@@ -140,6 +138,77 @@ function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boole
       <Pressable onPress={save} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
         <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>Mettre à jour</Text>
       </Pressable>
+    </BottomSheet>
+  );
+}
+
+function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClose: () => void }) {
+  const { vehicles } = useVehicles();
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [claim, setClaim] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const gen = async (vehicleId: number) => {
+    setMsg(null);
+    setCopied(false);
+    try {
+      const r = await createShare(vehicleId);
+      setToken(r.token);
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
+  const copy = async () => {
+    if (!token) return;
+    await Clipboard.setStringAsync(token);
+    setCopied(true);
+  };
+  const doClaim = async () => {
+    setMsg(null);
+    try {
+      await claimShare(claim);
+      setMsg("Appareil ajouté. Il apparaîtra dans ta liste.");
+      setClaim("");
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
+
+  return (
+    <BottomSheet t={t} visible={visible} onClose={onClose}>
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>Partager l'appareil</Text>
+      <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 12, fontFamily: font.body.regular }}>
+        Choisis un véhicule pour générer un jeton de partage (lecture).
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        {vehicles.map((v) => (
+          <Pressable key={v.id} onPress={() => gen(v.id)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+            <Text style={{ fontSize: 13, color: t.text, fontFamily: font.body.semibold }}>{v.name}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {token ? (
+        <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+          <Text style={{ fontSize: 16, letterSpacing: 2, color: t.text, fontFamily: font.mono.semibold }}>{token}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {copied ? <Check size={15} color={ONLINE} /> : <Copy size={15} color={ACCENT} />}
+            <Text style={{ fontSize: 12, color: copied ? ONLINE : ACCENT, fontFamily: font.body.bold }}>{copied ? "Copié" : "Copier"}</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
+      <Text style={{ fontSize: 13, color: t.sub, marginBottom: 8, fontFamily: font.body.bold }}>Ajouter un appareil partagé</Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flex: 1 }}>
+          <Field t={t} label="" icon={Share2} placeholder="KLN-XXXXXXXX" mono value={claim} onChangeText={setClaim} />
+        </View>
+      </View>
+      <Pressable onPress={doClaim} disabled={!claim.trim()} style={{ padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: claim.trim() ? ACCENT : hexA(t.text, 0.12) }}>
+        <Text style={{ fontSize: 14, color: claim.trim() ? LIME_ON : t.sub, fontFamily: font.body.bold }}>Ajouter</Text>
+      </Pressable>
+      {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{msg}</Text> : null}
     </BottomSheet>
   );
 }

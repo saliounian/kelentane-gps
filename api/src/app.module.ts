@@ -8,6 +8,7 @@ import { CommandsModule } from "./commands/commands.module";
 import { GeofencesModule } from "./geofences/geofences.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { ReportsModule } from "./reports/reports.module";
+import { SharesModule } from "./shares/shares.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { TraccarModule } from "./traccar/traccar.module";
 import { VehiclesModule } from "./vehicles/vehicles.module";
@@ -24,6 +25,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     ReportsModule,
     GeofencesModule,
     AuthModule,
+    SharesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

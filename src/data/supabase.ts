@@ -15,7 +15,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   },
 });
 
-/** Identité Supabase = email synthétique dérivé du username (décision étape 9). */
+/**
+ * Identité Supabase = email synthétique dérivé du username (décision étape 9).
+ * IMPORTANT : le domaine doit avoir des enregistrements MX — GoTrue rejette à
+ * l'inscription publique les domaines sans MX (« Email address is invalid »).
+ * `kelentane.com` en a ; `kelentane.app` non → on utilise kelentane.com.
+ * Aucun email n'est envoyé (Confirm email désactivé) : ce sont des identités,
+ * pas des boîtes réelles.
+ */
 export function usernameToEmail(username: string): string {
-  return `${username.trim().toLowerCase()}@kelentane.app`;
+  return `${username.trim().toLowerCase()}@kelentane.com`;
 }

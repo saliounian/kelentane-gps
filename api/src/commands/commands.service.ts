@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { TraccarService } from "../traccar/traccar.service";
+import { SupabaseService } from "../supabase/supabase.service";
 
 /** Types de commande exposés au mobile (§9.4). */
 export type CommandType = "engineStop" | "engineResume" | "gpsReboot";
@@ -16,35 +16,28 @@ const TRACCAR_TYPE: Record<CommandType, string> = {
 
 @Injectable()
 export class CommandsService {
-  // Suivi d'ACK en mémoire (provisoire ; l'ACK réel du boîtier viendra des
-  // événements Traccar au moteur d'alarmes, étape 6).
   private readonly acks = new Map<string, { state: CommandState; at: number }>();
 
   constructor(
     private readonly traccar: TraccarService,
-    private readonly config: ConfigService,
+    private readonly supa: SupabaseService,
   ) {}
 
   /**
-   * Vérification du mot de passe des commandes sensibles.
-   * STUB — sera remplacé par une vraie vérif (auth compte) à l'étape 9.
+   * Dispatch d'une commande. Les commandes sensibles exigent le mot de passe du
+   * COMPTE (vérifié via Supabase, étape 9b — remplace le stub COMMAND_PASSWORD).
    */
-  private verifyPassword(password?: string): boolean {
-    const expected = this.config.get<string>("COMMAND_PASSWORD") ?? "123456";
-    return !!password && password === expected;
-  }
-
   async dispatch(
     deviceId: number,
     type: CommandType,
-    password?: string,
+    ctx: { email: string; password?: string },
   ): Promise<{ ackId: string; state: CommandState }> {
-    if (SENSITIVE.includes(type) && !this.verifyPassword(password)) {
-      throw new UnauthorizedException("Mot de passe requis");
+    if (SENSITIVE.includes(type)) {
+      const ok = !!ctx.password && (await this.supa.verifyPassword(ctx.email, ctx.password));
+      if (!ok) throw new UnauthorizedException("Mot de passe incorrect");
     }
     const ackId = randomUUID();
 
-    // Véhicule hors ligne → non transmise (sémantique runCommand maquette).
     let offline = false;
     try {
       const devices = await this.traccar.getDevices();
