@@ -16,13 +16,29 @@ export const PARKED = "#FFB14E"; // stationné
 export const OFFLINE = "#8E8E93"; // hors ligne
 export const ALERT = "#FF5C5C"; // alarme / anomalie
 
+/* Statut véhicule (métier) */
+export type VehicleStatus = "moving" | "online" | "parked" | "offline";
+
 /* Libellés statut (FR) */
-export const STATUS_LABEL: Record<string, string> = {
+export const STATUS_LABEL: Record<VehicleStatus, string> = {
   moving: "En mouvement",
   online: "En ligne",
   parked: "Stationné",
   offline: "Hors ligne",
 };
+
+/** Couleur dérivée du statut (jamais le lime). */
+export function statusColor(status: VehicleStatus): string {
+  switch (status) {
+    case "moving":
+    case "online":
+      return ONLINE;
+    case "parked":
+      return PARKED;
+    case "offline":
+      return OFFLINE;
+  }
+}
 
 /* ---------------------------------------------------------------- CONFIG FRAÎCHEUR
  * Externalisé (dette §16 : seuils codés en dur dans freshColor de la maquette). */
