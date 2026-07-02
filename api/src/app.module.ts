@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { CommandsModule } from "./commands/commands.module";
 import { TraccarModule } from "./traccar/traccar.module";
 import { VehiclesModule } from "./vehicles/vehicles.module";
 
@@ -10,6 +11,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env"] }),
     TraccarModule,
     VehiclesModule,
+    CommandsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

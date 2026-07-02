@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchVehicles } from "./api";
 import type { VehicleVM } from "../types/vehicle";
 
-const POLL_MS = 10000; // rafraîchissement positions (WebSocket temps réel = incrément suivant)
+const POLL_MS = 10000;
+
+// TODO [BLOQUANT avant prod] Remplacer ce polling par le WebSocket Traccar
+// relayé par la façade (positions + événements). Voir docs/PLAN.md §"Dette
+// technique BLOQUANTE". Le polling est un provisoire d'étape 3, pas la cible.
 
 type State = {
   vehicles: VehicleVM[];

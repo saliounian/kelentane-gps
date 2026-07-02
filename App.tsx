@@ -4,6 +4,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAppFonts } from "./src/theme/fonts";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
+import { IconOverridesProvider } from "./src/state/iconOverrides";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 
 function Root() {
@@ -27,7 +28,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider initialDark>
-          <Root />
+          <IconOverridesProvider>
+            <Root />
+          </IconOverridesProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

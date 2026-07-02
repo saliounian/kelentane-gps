@@ -12,3 +12,5 @@ export { SectionLabel, SectionLabelInline } from "./SectionLabel";
 export { GlassButton } from "./GlassButton";
 export { TabBar } from "./TabBar";
 export { CommandToast } from "./CommandToast";
+export { BottomSheet } from "./BottomSheet";
+export { PasswordSheet } from "./PasswordSheet";

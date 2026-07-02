@@ -5,6 +5,7 @@ import { useTheme } from "../theme/ThemeProvider";
 import { MapScreen } from "../screens/MapScreen";
 import { ListScreen } from "../screens/ListScreen";
 import { DetailScreen } from "../screens/DetailScreen";
+import { IconPickerScreen } from "../screens/IconPickerScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { AppTabBar } from "./AppTabBar";
 import type { RootStackParamList, TabParamList } from "./types";
@@ -40,6 +41,7 @@ export function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="Detail" component={DetailScreen} />
+        <Stack.Screen name="IconPicker" component={IconPickerScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

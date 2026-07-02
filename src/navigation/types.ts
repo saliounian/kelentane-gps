@@ -13,4 +13,5 @@ export type TabParamList = {
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList> | undefined;
   Detail: { vehicleId: number };
+  IconPicker: { vehicleId: number };
 };

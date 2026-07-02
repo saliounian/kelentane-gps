@@ -34,6 +34,25 @@ export class TraccarService {
     return res.data;
   }
 
+  private async post<T>(path: string, body: unknown): Promise<T> {
+    const res = await firstValueFrom(
+      this.http.post<T>(`${this.baseUrl}${path}`, body, {
+        headers: {
+          Authorization: this.auth,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        timeout: 8000,
+      }),
+    );
+    return res.data;
+  }
+
+  /** Envoi immédiat d'une commande à un device (Traccar /commands/send). */
+  sendCommand(deviceId: number, type: string): Promise<unknown> {
+    return this.post("/api/commands/send", { deviceId, type });
+  }
+
   getDevices(): Promise<TraccarDevice[]> {
     return this.get<TraccarDevice[]>("/api/devices");
   }
