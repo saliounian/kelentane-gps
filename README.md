@@ -37,6 +37,20 @@ docker compose -f infra/traccar/docker-compose.yml up -d
 # UI : http://localhost:8082 (créer l'admin), port GT06 : 5023
 ```
 
+### Positions réelles en dev (simulateur GT06)
+1. Dans l'UI Traccar, créer un device avec `identifiant` (uniqueId) = IMEI du simulateur
+   (`356789123456781` par défaut). Traccar ignore les boîtiers inconnus.
+2. Lancer le feeder (pousse des positions Dakar toutes les 5 s) :
+   ```bash
+   node infra/gt06-sim/gt06-sim.js
+   ```
+3. `GET /vehicles` de l'API renvoie alors le véhicule avec sa position réelle ;
+   la carte + la liste du mobile l'affichent.
+
+> Émulateur Android : `localhost` pointe l'émulateur, pas la machine hôte.
+> Régler `API_URL` sur `http://10.0.2.2:3000` (ou l'IP LAN sur appareil réel)
+> dans `src/config/env.ts`.
+
 ### API façade
 ```bash
 cd api && cp .env.example .env   # renseigner TRACCAR_* et SUPABASE_*
