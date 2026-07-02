@@ -194,8 +194,7 @@ export function DetailScreen() {
             <Cmd t={t} icon={Fence} label="Géofence" onPress={() => {}} />
           </View>
           <View style={{ width: "48%" }}>
-            {/* kilométrage : étape 7 */}
-            <Cmd t={t} icon={Gauge} label="Kilométrage" onPress={() => {}} />
+            <Cmd t={t} icon={Gauge} label="Kilométrage" onPress={() => nav.navigate("Km", { vehicleId: v.id })} />
           </View>
         </View>
 

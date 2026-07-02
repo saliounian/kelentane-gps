@@ -8,6 +8,9 @@ import { DetailScreen } from "../screens/DetailScreen";
 import { IconPickerScreen } from "../screens/IconPickerScreen";
 import { AlarmsScreen } from "../screens/AlarmsScreen";
 import { AlarmLocationScreen } from "../screens/AlarmLocationScreen";
+import { StatsScreen } from "../screens/StatsScreen";
+import { KmScreen } from "../screens/KmScreen";
+import { TrajectoryScreen } from "../screens/TrajectoryScreen";
 import { PlaceholderScreen } from "../screens/PlaceholderScreen";
 import { AppTabBar } from "./AppTabBar";
 import type { RootStackParamList, TabParamList } from "./types";
@@ -25,7 +28,7 @@ function Tabs() {
       <Tab.Screen name="map" component={MapScreen} />
       <Tab.Screen name="list" component={ListScreen} />
       <Tab.Screen name="alarm" component={AlarmsScreen} />
-      <Tab.Screen name="stats">{() => <PlaceholderScreen title="Stats" step="étape 6" />}</Tab.Screen>
+      <Tab.Screen name="stats" component={StatsScreen} />
       <Tab.Screen name="me">{() => <PlaceholderScreen title="Profil" step="étape 8" />}</Tab.Screen>
     </Tab.Navigator>
   );
@@ -45,6 +48,8 @@ export function RootNavigator() {
         <Stack.Screen name="Detail" component={DetailScreen} />
         <Stack.Screen name="IconPicker" component={IconPickerScreen} />
         <Stack.Screen name="AlarmLocation" component={AlarmLocationScreen} />
+        <Stack.Screen name="Km" component={KmScreen} />
+        <Stack.Screen name="Traj" component={TrajectoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

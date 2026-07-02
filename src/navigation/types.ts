@@ -16,4 +16,6 @@ export type RootStackParamList = {
   Detail: { vehicleId: number };
   IconPicker: { vehicleId: number };
   AlarmLocation: { alarm: AlarmEventVM };
+  Km: { vehicleId: number };
+  Traj: { vehicleId: number };
 };

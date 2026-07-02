@@ -15,3 +15,4 @@ export { CommandToast } from "./CommandToast";
 export { BottomSheet } from "./BottomSheet";
 export { PasswordSheet } from "./PasswordSheet";
 export { AlarmSettingsSheet } from "./AlarmSettingsSheet";
+export { BarChart } from "./BarChart";

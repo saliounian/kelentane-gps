@@ -27,6 +27,33 @@ export interface TraccarEvent {
   };
 }
 
+export interface TraccarSummary {
+  deviceId: number;
+  deviceName: string;
+  distance: number; // mètres
+  averageSpeed: number; // nœuds
+  maxSpeed: number; // nœuds
+  engineHours: number; // ms
+  startTime?: string; // ISO (présent en daily)
+}
+
+export interface TraccarTrip {
+  deviceId: number;
+  distance: number; // mètres
+  averageSpeed: number; // nœuds
+  maxSpeed: number; // nœuds
+  duration: number; // ms
+  startTime: string;
+  endTime: string;
+}
+
+export interface TraccarStop {
+  deviceId: number;
+  duration: number; // ms
+  startTime: string;
+  address?: string | null;
+}
+
 export interface TraccarPosition {
   id: number;
   deviceId: number;

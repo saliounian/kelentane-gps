@@ -211,7 +211,7 @@ export function MapScreen() {
                 )
               }
             />
-            <ActionBtn t={t} icon={Route} label="Trajectoire" onPress={() => {}} />
+            <ActionBtn t={t} icon={Route} label="Trajectoire" onPress={() => nav.navigate("Traj", { vehicleId: active.id })} />
             <ActionBtn t={t} icon={Info} label="Plus" onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
           </View>
         </View>

@@ -5,6 +5,7 @@ import { AppService } from "./app.service";
 import { AlarmsModule } from "./alarms/alarms.module";
 import { CommandsModule } from "./commands/commands.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { ReportsModule } from "./reports/reports.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { TraccarModule } from "./traccar/traccar.module";
 import { VehiclesModule } from "./vehicles/vehicles.module";
@@ -18,6 +19,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     CommandsModule,
     AlarmsModule,
     NotificationsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

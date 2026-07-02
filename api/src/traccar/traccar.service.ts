@@ -2,7 +2,14 @@ import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
-import type { TraccarDevice, TraccarEvent, TraccarPosition } from "./traccar.types";
+import type {
+  TraccarDevice,
+  TraccarEvent,
+  TraccarPosition,
+  TraccarStop,
+  TraccarSummary,
+  TraccarTrip,
+} from "./traccar.types";
 
 /**
  * Client de façade vers Traccar. Les identifiants Traccar vivent UNIQUEMENT
@@ -70,6 +77,30 @@ export class TraccarService {
     params.set("to", toIso);
     for (const id of deviceIds) params.append("deviceId", String(id));
     return this.get<TraccarEvent[]>(`/api/reports/events?${params.toString()}`);
+  }
+
+  private reportQuery(deviceIds: number[], fromIso: string, toIso: string, extra?: Record<string, string>): string {
+    const params = new URLSearchParams({ from: fromIso, to: toIso, ...extra });
+    for (const id of deviceIds) params.append("deviceId", String(id));
+    return params.toString();
+  }
+
+  getSummary(deviceIds: number[], fromIso: string, toIso: string, daily = false): Promise<TraccarSummary[]> {
+    if (deviceIds.length === 0) return Promise.resolve([]);
+    const q = this.reportQuery(deviceIds, fromIso, toIso, daily ? { daily: "true" } : undefined);
+    return this.get<TraccarSummary[]>(`/api/reports/summary?${q}`);
+  }
+
+  getTrips(deviceId: number, fromIso: string, toIso: string): Promise<TraccarTrip[]> {
+    return this.get<TraccarTrip[]>(`/api/reports/trips?${this.reportQuery([deviceId], fromIso, toIso)}`);
+  }
+
+  getStops(deviceId: number, fromIso: string, toIso: string): Promise<TraccarStop[]> {
+    return this.get<TraccarStop[]>(`/api/reports/stops?${this.reportQuery([deviceId], fromIso, toIso)}`);
+  }
+
+  getRoute(deviceId: number, fromIso: string, toIso: string): Promise<TraccarPosition[]> {
+    return this.get<TraccarPosition[]>(`/api/reports/route?${this.reportQuery([deviceId], fromIso, toIso)}`);
   }
 
   /** Devices + positions en une passe, résilient si Traccar est injoignable. */
