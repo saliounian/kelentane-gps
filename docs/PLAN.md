@@ -68,6 +68,15 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
   locuteur natif. **RTL (arabe)** : `I18nManager.forceRTL` exige un **redémarrage
   de l'app** pour s'appliquer pleinement (pas de reload auto sans expo-updates).
 
+## Clés / secrets build
+
+- **Google Maps Android** : injectée via `app.config.js` depuis
+  `process.env.GOOGLE_MAPS_ANDROID_KEY` (secret EAS) — **jamais** en dur dans
+  app.json. Restreinte (package `com.kelentane.gps` + SHA-1 keystore EAS + Maps SDK
+  for Android). Créer : `eas secret:create --scope project --name
+  GOOGLE_MAPS_ANDROID_KEY --value <clé> --type string`. Local (`expo run:android`) :
+  exporter la variable avant de lancer.
+
 ## Décisions arrêtées (rappel)
 
 - Plateforme : **Expo (React Native)**.
