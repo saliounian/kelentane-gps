@@ -3,6 +3,7 @@ import { LayoutRectangle, Pressable, ScrollView, Text, TextInput, View } from "r
 import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, Fence, Plus, RotateCcw, X } from "lucide-react-native";
 import { ACCENT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -19,6 +20,7 @@ const R_MAX = 1000;
 
 export function GeofenceScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "Geo">>();
@@ -159,17 +161,17 @@ export function GeofenceScreen() {
           <View style={{ position: "absolute", top: insets.top + 8, left: 62, right: 14 }}>
             <Glass t={t} dark={dark} radius={10} style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
               <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>
-                {mode === "polygon" ? "Touche la carte pour poser les sommets (≥ 3)" : "Touche la carte pour placer le centre"}
+                {mode === "polygon" ? tr("geo.hintPolygon") : tr("geo.hintCircle")}
               </Text>
             </Glass>
           </View>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 14, gap: 12 }}>
-          <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>Nouvelle zone</Text>
+          <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>{tr("geo.newZone")}</Text>
 
           <View style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-            {([["polygon", "Zone personnalisée"], ["circle", "Cercle"]] as const).map(([id, lbl]) => {
+            {([["polygon", tr("geo.polygon")], ["circle", tr("geo.circle")]] as const).map(([id, lbl]) => {
               const on = mode === id;
               return (
                 <Pressable key={id} onPress={() => { setMode(id); reset(); }} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: on ? ACCENT : "transparent" }}>
@@ -181,7 +183,7 @@ export function GeofenceScreen() {
 
           {mode === "circle" ? (
             <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>Rayon</Text>
+              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("geo.radius")}</Text>
               <Pressable
                 onLayout={(e) => setTrack(e.nativeEvent.layout)}
                 onPress={(e) => {
@@ -200,7 +202,7 @@ export function GeofenceScreen() {
           ) : null}
 
           <View>
-            <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6, paddingLeft: 2, fontFamily: font.body.semibold }}>Nom de la zone</Text>
+            <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6, paddingLeft: 2, fontFamily: font.body.semibold }}>{tr("geo.zoneName")}</Text>
             <View style={{ height: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
               <Fence size={18} color={t.sub} />
               <TextInput value={name} onChangeText={setName} placeholder="Zone domicile" placeholderTextColor={t.sub} style={{ flex: 1, color: t.text, fontSize: 15, fontFamily: font.body.regular }} />
@@ -210,11 +212,11 @@ export function GeofenceScreen() {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable onPress={reset} style={{ flex: 1, height: 44, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
               <RotateCcw size={16} color={t.text} />
-              <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>Effacer</Text>
+              <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("geo.clear")}</Text>
             </Pressable>
             <Pressable onPress={save} disabled={!canSave || saving} style={{ flex: 2, height: 44, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: canSave ? ACCENT : hexA(t.text, 0.12) }}>
               <Check size={17} color={canSave ? LIME_ON : t.sub} />
-              <Text style={{ fontSize: 14, color: canSave ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{saving ? "Enregistrement…" : "Enregistrer la zone"}</Text>
+              <Text style={{ fontSize: 14, color: canSave ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{saving ? tr("geo.saving") : tr("geo.save")}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -240,14 +242,14 @@ export function GeofenceScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, gap: 10 }}>
-        <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>Géofence</Text>
-        <Text style={{ fontSize: 12, color: t.sub, marginTop: -6, fontFamily: font.body.regular }}>{v?.name ?? "Véhicule"} · zones de surveillance</Text>
+        <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>{tr("geo.title")}</Text>
+        <Text style={{ fontSize: 12, color: t.sub, marginTop: -6, fontFamily: font.body.regular }}>{tr("geo.subtitle", { name: v?.name ?? "Véhicule" })}</Text>
 
         {error ? (
           <Text style={{ color: t.sub, fontSize: 13, marginTop: 10, fontFamily: font.body.regular }}>{error}</Text>
         ) : zones.length === 0 ? (
           <Glass t={t} dark={dark} style={{ padding: 22, alignItems: "center" }}>
-            <Text style={{ color: t.sub, fontSize: 13, fontFamily: font.body.regular }}>Aucune zone. Touche « + » pour en créer une.</Text>
+            <Text style={{ color: t.sub, fontSize: 13, fontFamily: font.body.regular }}>{tr("geo.empty")}</Text>
           </Glass>
         ) : (
           <Glass t={t} dark={dark} style={{ padding: 4 }}>
@@ -260,7 +262,7 @@ export function GeofenceScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{z.name}</Text>
-                    <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>{z.kind === "circle" ? "Cercle" : "Zone personnalisée"}</Text>
+                    <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>{z.kind === "circle" ? tr("geo.circle") : tr("geo.polygon")}</Text>
                   </View>
                   <Toggle t={t} on={z.enabled} set={(on) => toggle(z, on)} />
                   <Pressable onPress={() => remove(z)} style={{ width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>

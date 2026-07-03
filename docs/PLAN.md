@@ -14,7 +14,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 7 | Km / Stats / Trajet via reports Traccar | ✅ |
 | 8 | Géofences CRUD + règles | ✅ |
 | 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | ✅ |
-| 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | 🚧 10a ✅ / 10b ⬜ |
+| 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | ✅ (Baidu natif à part) |
 | 11 | Externaliser icônes véhicules (PNG → /assets) | ✅ |
 
 ## Dette technique BLOQUANTE avant mise en production
@@ -62,8 +62,16 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
   `fr` (maître) + `en` complets, `wo`/`ar` partiels (fallback `fr`), langue persistée
   (AsyncStorage), unités km/mi (contexte + conversions), source carte persistée.
   Écrans extraits : TabBar, Auth, Profil ; unités appliquées Map/Liste/Détail.
-- **10b à faire** : extraire les chaînes des écrans restants (Alarmes, Km, Stats,
-  Trajet, Géofence, lignes Détail) + provider carte **Baidu** (SDK natif).
+- **10b fait** : tous les écrans statiques extraits (Map, Liste, Détail+PasswordSheet,
+  Alarmes+AlarmSettings, AlarmLocation, Km, Stats, Trajet, Géofence). Catalogues
+  fr/en complets pour ces écrans.
+- **Reste FR (dette, non bloquant)** :
+  - Chaînes de registre `ALARM_TYPES` (labels des types d'alarme) et
+    `VEH_ICON_LABELS` (libellés d'icônes) — à extraire pour i18n complet.
+  - Contenu **dynamique serveur** (causes/actions d'anomalie, `statusText`,
+    adresses géocodées) reste dans la langue fournie par l'API/Traccar.
+  - **Baidu** : le toggle persiste mais le rendu Baidu exige un **module natif RN**
+    (pas dispo en Expo managed sans plugin/dev-module) — intégration séparée.
 - **[À vérifier humain] Traductions `wo`/`ar`** = ébauches, à faire relire par un
   locuteur natif. **RTL (arabe)** : `I18nManager.forceRTL` exige un **redémarrage
   de l'app** pour s'appliquer pleinement (pas de reload auto sans expo-updates).

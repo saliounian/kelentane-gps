@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, KeyRound, Lock, Power } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, PARKED, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -22,6 +23,7 @@ type Props = {
  * Maquette : `PasswordSheet`. La vérif réelle est côté API (stub étape 4).
  */
 export function PasswordSheet({ t, visible, title, confirmLabel, onConfirm, onClose, danger, note }: Props) {
+  const { t: tr } = useTranslation();
   const [pwd, setPwd] = useState("");
   const c = danger ? ALERT : ACCENT;
 
@@ -39,7 +41,7 @@ export function PasswordSheet({ t, visible, title, confirmLabel, onConfirm, onCl
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold }}>{title}</Text>
           <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>
-            Confirme avec le mot de passe du compte
+            {tr("pwd.confirmAccount")}
           </Text>
         </View>
       </View>
@@ -52,7 +54,7 @@ export function PasswordSheet({ t, visible, title, confirmLabel, onConfirm, onCl
       ) : null}
 
       <View style={{ marginTop: 8 }}>
-        <Field t={t} label="Mot de passe du compte" icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={setPwd} />
+        <Field t={t} label={tr("pwd.accountPwd")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={setPwd} />
       </View>
 
       <Pressable

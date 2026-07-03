@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
 import { ACCENT, hexA, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -16,6 +17,7 @@ const PRESETS = [14, 60, 90];
 
 export function KmScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "Km">>();
@@ -53,9 +55,9 @@ export function KmScreen() {
   }, [params.vehicleId, mode, customDays]);
 
   const chips: { id: Range; label: string }[] = [
-    { id: "7d", label: "7 jours" },
-    { id: "30d", label: "30 jours" },
-    { id: "custom", label: mode === "custom" ? `${customDays} j` : "Perso" },
+    { id: "7d", label: tr("km.d7") },
+    { id: "30d", label: tr("km.d30") },
+    { id: "custom", label: mode === "custom" ? `${customDays} j` : tr("km.custom") },
   ];
 
   return (
@@ -63,7 +65,7 @@ export function KmScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40, paddingHorizontal: 14, gap: 12 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <GlassButton t={t} icon={ChevronLeft} onPress={() => nav.goBack()} />
-          <Text style={{ fontSize: 21, color: t.text, fontFamily: font.display.extrabold }}>Kilométrage</Text>
+          <Text style={{ fontSize: 21, color: t.text, fontFamily: font.display.extrabold }}>{tr("km.title")}</Text>
         </View>
 
         {/* intervalle */}
@@ -85,16 +87,16 @@ export function KmScreen() {
         {error ? (
           <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{error}</Text>
         ) : !data ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>Chargement…</Text>
+          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("common.loading")}</Text>
         ) : (
           <>
             <Glass t={t} dark={dark} style={{ padding: 16 }}>
-              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>Total sur l'intervalle</Text>
+              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("km.totalInterval")}</Text>
               <Text style={{ fontSize: 44, color: t.text, fontFamily: font.display.black, letterSpacing: -1 }}>
                 {data.total}
                 <Text style={{ fontSize: 16, color: t.sub, fontFamily: font.body.semibold }}> km</Text>
               </Text>
-              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>≈ {data.avgPerDay} km / jour</Text>
+              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("km.perDay", { n: data.avgPerDay })}</Text>
             </Glass>
 
             <Glass t={t} dark={dark} style={{ padding: 14 }}>
@@ -102,7 +104,7 @@ export function KmScreen() {
             </Glass>
 
             <Text style={{ fontSize: 13, color: t.sub, paddingLeft: 4, marginTop: 4, fontFamily: font.body.bold }}>
-              Total par véhicule
+              {tr("km.totalByVehicle")}
             </Text>
             <Glass t={t} dark={dark} style={{ padding: 4 }}>
               {data.byVehicle.map((v, i) => (
@@ -124,10 +126,10 @@ export function KmScreen() {
 
       <BottomSheet t={t} visible={perso} onClose={() => setPerso(false)}>
         <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, paddingHorizontal: 4, marginBottom: 4 }}>
-          Intervalle personnalisé
+          {tr("km.customTitle")}
         </Text>
         <Text style={{ fontSize: 12, color: t.sub, paddingHorizontal: 4, marginBottom: 12, fontFamily: font.body.regular }}>
-          Derniers jours (sélecteur calendrier précis : à venir).
+          {tr("km.customDesc")}
         </Text>
         {PRESETS.map((d) => (
           <Pressable
@@ -139,7 +141,7 @@ export function KmScreen() {
             }}
             style={{ paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginBottom: 8, backgroundColor: hexA(ACCENT, 0.1) }}
           >
-            <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{d} derniers jours</Text>
+            <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("km.lastNDays", { n: d })}</Text>
           </Pressable>
         ))}
       </BottomSheet>

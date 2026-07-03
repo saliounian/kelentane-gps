@@ -101,7 +101,7 @@ export function MapScreen() {
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, color: t.text, fontFamily: font.display.extrabold }}>kelentane</Text>
           <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
-            {vehicles.length} véhicules · {activeCount} actifs
+            {tr("map.summary", { count: vehicles.length, active: activeCount })}
           </Text>
         </View>
         <GlassButton t={t} icon={Search} />
@@ -175,7 +175,7 @@ export function MapScreen() {
                 <StatusPill status={active.status} color={active.color} />
               </View>
               <Text numberOfLines={1} style={{ fontSize: 12, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
-                {active.addr ?? "Adresse indisponible"}
+                {active.addr ?? tr("common.noAddress")}
               </Text>
             </View>
           </View>
@@ -208,7 +208,7 @@ export function MapScreen() {
             <ActionBtn
               t={t}
               icon={Navigation}
-              label="Suivi"
+              label={tr("map.follow")}
               primary
               onPress={() =>
                 Linking.openURL(
@@ -216,8 +216,8 @@ export function MapScreen() {
                 )
               }
             />
-            <ActionBtn t={t} icon={Route} label="Trajectoire" onPress={() => nav.navigate("Traj", { vehicleId: active.id })} />
-            <ActionBtn t={t} icon={Info} label="Plus" onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
+            <ActionBtn t={t} icon={Route} label={tr("map.traj")} onPress={() => nav.navigate("Traj", { vehicleId: active.id })} />
+            <ActionBtn t={t} icon={Info} label={tr("map.more")} onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
           </View>
         </View>
       ) : null}

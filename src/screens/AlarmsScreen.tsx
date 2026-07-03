@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import { Bell, MapPin, Settings } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -13,14 +14,12 @@ import { AlarmSettingsSheet, GlassButton, Toggle } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { AlarmEventVM, DeviceHealthVM, HealthStatus, NotificationPrefs } from "../types/alarm";
 
-const HEALTH: Record<HealthStatus, { dot: string; label: string; sub: string | null }> = {
-  ok: { dot: ONLINE, label: "OK", sub: "connecté · alimentation et signal normaux" },
-  check: { dot: PARKED, label: "À vérifier", sub: null },
-  problem: { dot: ALERT, label: "Problème · action requise", sub: null },
-};
+const HEALTH_DOT: Record<HealthStatus, string> = { ok: ONLINE, check: PARKED, problem: ALERT };
+const HEALTH_KEY: Record<HealthStatus, string> = { ok: "alarms.ok", check: "alarms.check", problem: "alarms.problem" };
 
 export function AlarmsScreen() {
   const { t } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -81,13 +80,13 @@ export function AlarmsScreen() {
         {/* header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4, marginBottom: 10 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5 }}>Alarmes</Text>
+            <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5 }}>{tr("alarms.title")}</Text>
             <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>
               {tab === "anomalies"
                 ? anomCount > 0
-                  ? `${anomCount} dispositif(s) à corriger`
-                  : "Tous les dispositifs vont bien"
-                : `${events.length} événements récents`}
+                  ? tr("alarms.toCorrect", { count: anomCount })
+                  : tr("alarms.allGood")
+                : tr("alarms.recentEvents", { count: events.length })}
             </Text>
           </View>
           <GlassButton t={t} icon={Settings} size={38} onPress={() => setSettings(true)} />
@@ -104,7 +103,7 @@ export function AlarmsScreen() {
                 style={{ flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, backgroundColor: on ? ACCENT : "transparent" }}
               >
                 <Text style={{ fontSize: 13, color: on ? LIME_ON : t.sub, fontFamily: on ? font.body.bold : font.body.medium }}>
-                  {id === "alarmes" ? "Alarmes" : "Anomalies"}
+                  {id === "alarmes" ? tr("alarms.tabAlarms") : tr("alarms.tabAnomalies")}
                 </Text>
                 {id === "anomalies" && anomCount > 0 ? (
                   <View style={{ minWidth: 16, height: 16, borderRadius: 999, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: on ? "#fff" : ALERT }}>
@@ -123,10 +122,10 @@ export function AlarmsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.bold }}>
-              {prefs.armed ? "Notifications armées" : "Notifications désarmées"}
+              {prefs.armed ? tr("alarms.armed") : tr("alarms.disarmed")}
             </Text>
             <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>
-              {prefs.armed ? "Alertes actives sur ce téléphone" : "Aucune alerte ne sera reçue"}
+              {prefs.armed ? tr("alarms.armedDesc") : tr("alarms.disarmedDesc")}
             </Text>
           </View>
           <Toggle t={t} on={prefs.armed} set={setArmed} large />
@@ -137,22 +136,24 @@ export function AlarmsScreen() {
         ) : tab === "anomalies" ? (
           <View style={{ gap: 10 }}>
             {health.map((d) => {
-              const st = HEALTH[d.status];
+              const dot = HEALTH_DOT[d.status];
+              const label = tr(HEALTH_KEY[d.status]);
+              const okSub = tr("alarms.okSub");
               const isOpen = open[d.vehicle];
-              const summary = d.status === "ok" ? st.sub : ALARM_TYPE_BY_ID[d.anomalies[0]?.type]?.label ?? st.label;
+              const summary = d.status === "ok" ? okSub : ALARM_TYPE_BY_ID[d.anomalies[0]?.type]?.label ?? label;
               return (
-                <View key={d.vehicle} style={{ borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: d.status === "ok" ? t.border : hexA(st.dot, 0.4), backgroundColor: d.status === "ok" ? t.glass : hexA(st.dot, 0.07) }}>
+                <View key={d.vehicle} style={{ borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: d.status === "ok" ? t.border : hexA(dot, 0.4), backgroundColor: d.status === "ok" ? t.glass : hexA(dot, 0.07) }}>
                   <Pressable
                     onPress={() => d.status !== "ok" && setOpen((o) => ({ ...o, [d.vehicle]: !o[d.vehicle] }))}
                     style={{ flexDirection: "row", alignItems: "center", gap: 11, padding: 13 }}
                   >
-                    <View style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: st.dot }} />
+                    <View style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: dot }} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 15, color: t.text, fontFamily: font.body.bold }}>{d.vehicle}</Text>
-                      <Text numberOfLines={1} style={{ fontSize: 12, color: st.dot, marginTop: 1, fontFamily: font.body.regular }}>
-                        {st.label}
+                      <Text numberOfLines={1} style={{ fontSize: 12, color: dot, marginTop: 1, fontFamily: font.body.regular }}>
+                        {label}
                         {d.status !== "ok" && summary ? ` · ${summary}` : ""}
-                        {d.status === "ok" && st.sub ? ` · ${st.sub}` : ""}
+                        {d.status === "ok" ? ` · ${okSub}` : ""}
                       </Text>
                     </View>
                     {d.status !== "ok" ? <Text style={{ color: t.sub, fontSize: 16 }}>{isOpen ? "⌄" : "›"}</Text> : null}
@@ -184,7 +185,7 @@ export function AlarmsScreen() {
               );
             })}
             {health.length === 0 ? (
-              <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>Aucune donnée dispositif.</Text>
+              <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("alarms.noHealth")}</Text>
             ) : null}
           </View>
         ) : (
@@ -211,14 +212,14 @@ export function AlarmsScreen() {
                     <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>{e.time}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                       <MapPin size={11} color={ACCENT} />
-                      <Text style={{ fontSize: 10.5, color: ACCENT, fontFamily: font.body.bold }}>Voir</Text>
+                      <Text style={{ fontSize: 10.5, color: ACCENT, fontFamily: font.body.bold }}>{tr("alarms.see")}</Text>
                     </View>
                   </View>
                 </Pressable>
               );
             })}
             {events.length === 0 ? (
-              <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>Aucun événement récent.</Text>
+              <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("alarms.noEvents")}</Text>
             ) : null}
           </View>
         )}

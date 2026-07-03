@@ -41,9 +41,9 @@ export function ListScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4, marginBottom: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5 }}>
-              Véhicules
+              {tr("list.title")}
             </Text>
-            <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>Flotte Kelentane · Dakar</Text>
+            <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>{tr("list.subtitle")}</Text>
           </View>
           <Pressable
             style={{
@@ -78,7 +78,7 @@ export function ListScreen() {
           <TextInput
             value={q}
             onChangeText={setQ}
-            placeholder="Rechercher un véhicule"
+            placeholder={tr("list.search")}
             placeholderTextColor={t.sub}
             style={{ flex: 1, color: t.text, fontSize: 14, fontFamily: font.body.regular }}
           />
@@ -90,7 +90,7 @@ export function ListScreen() {
           </Text>
         ) : filtered.length === 0 ? (
           <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>
-            {loading ? "Chargement…" : "Aucun véhicule"}
+            {loading ? tr("common.loading") : tr("list.empty")}
           </Text>
         ) : (
           <View style={{ gap: 10 }}>

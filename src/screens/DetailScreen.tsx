@@ -102,7 +102,7 @@ export function DetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top + 12, paddingHorizontal: 14 }}>
         <GlassButton t={t} icon={ChevronLeft} onPress={() => nav.goBack()} />
-        <Text style={{ color: t.sub, marginTop: 20, fontFamily: font.body.regular }}>Véhicule introuvable.</Text>
+        <Text style={{ color: t.sub, marginTop: 20, fontFamily: font.body.regular }}>{tr("common.vehicleNotFound")}</Text>
       </View>
     );
   }
@@ -172,46 +172,46 @@ export function DetailScreen() {
 
         {/* info rows */}
         <Glass t={t} dark={dark} style={{ padding: 4 }}>
-          <Row t={t} icon={MapPin} label="Adresse" value={v.addr ?? "—"} />
-          <Row t={t} icon={Signal} label="Positionnement" value={v.signal} />
-          <Row t={t} icon={Power} label="Contact (ACC)" value={v.acc == null ? "—" : v.acc ? "Marche" : "Arrêt"} valueColor={v.acc ? ONLINE : OFFLINE} />
-          <Row t={t} icon={Clock} label="Dernière position" value={fmtDT(v.lastSeen)} mono />
-          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label="Mise à jour" value={relAgo(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} last />
+          <Row t={t} icon={MapPin} label={tr("detail.address")} value={v.addr ?? "—"} />
+          <Row t={t} icon={Signal} label={tr("detail.positioning")} value={v.signal} />
+          <Row t={t} icon={Power} label={tr("detail.acc")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
+          <Row t={t} icon={Clock} label={tr("detail.lastPos")} value={fmtDT(v.lastSeen)} mono />
+          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label={tr("detail.update")} value={relAgo(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} last />
         </Glass>
 
         {/* commandes */}
-        <Label t={t}>Commandes</Label>
+        <Label t={t}>{tr("detail.commands")}</Label>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Lock} label={engineCut ? "Moteur coupé" : "Couper moteur"} danger active={engineCut} onPress={() => setPwdAction("cut")} />
+            <Cmd t={t} icon={Lock} label={engineCut ? tr("detail.cutDone") : tr("detail.cut")} danger active={engineCut} onPress={() => setPwdAction("cut")} />
           </View>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Power} label="Redémarrer moteur" primary={engineCut} onPress={() => setPwdAction("restart")} />
+            <Cmd t={t} icon={Power} label={tr("detail.restart")} primary={engineCut} onPress={() => setPwdAction("restart")} />
           </View>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Navigation} label="Suivi en direct" primary onPress={() => Linking.openURL(followUrl)} />
+            <Cmd t={t} icon={Navigation} label={tr("detail.followLive")} primary onPress={() => Linking.openURL(followUrl)} />
           </View>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={RotateCcw} label={gpsRebooting ? "Redémarrage…" : "Redémarrer GPS"} active={gpsRebooting} onPress={rebootGps} />
+            <Cmd t={t} icon={RotateCcw} label={gpsRebooting ? tr("detail.gpsRebooting") : tr("detail.gps")} active={gpsRebooting} onPress={rebootGps} />
           </View>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Fence} label="Géofence" onPress={() => nav.navigate("Geo", { vehicleId: v.id })} />
+            <Cmd t={t} icon={Fence} label={tr("detail.geofence")} onPress={() => nav.navigate("Geo", { vehicleId: v.id })} />
           </View>
           <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Gauge} label="Kilométrage" onPress={() => nav.navigate("Km", { vehicleId: v.id })} />
+            <Cmd t={t} icon={Gauge} label={tr("detail.km")} onPress={() => nav.navigate("Km", { vehicleId: v.id })} />
           </View>
         </View>
 
         {/* détails dispositif */}
-        <Label t={t}>Détails du dispositif</Label>
+        <Label t={t}>{tr("detail.deviceDetails")}</Label>
         <Glass t={t} dark={dark} style={{ padding: 4 }}>
-          <EditableRow t={t} icon={Car} label="Nom du dispositif" value={devName} onChangeText={setDevName} onEndEditing={() => persist({ name: devName })} />
+          <EditableRow t={t} icon={Car} label={tr("detail.devName")} value={devName} onChangeText={setDevName} onEndEditing={() => persist({ name: devName })} />
           <Pressable
             onPress={() => nav.navigate("IconPicker", { vehicleId: v.id })}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: t.line }}
           >
             <Gauge size={17} color={t.sub} />
-            <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>Icône du véhicule</Text>
+            <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>{tr("detail.vehIcon")}</Text>
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 8 }}>
               <View style={{ width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: hexA(v.color, 0.16) }}>
                 <VIcon size={16} color={v.color} />
@@ -219,33 +219,29 @@ export function DetailScreen() {
               <ChevronRight size={16} color={t.sub} />
             </View>
           </Pressable>
-          <Row t={t} icon={Hash} label="IMEI" value={v.imei} mono />
-          <Row t={t} icon={Cpu} label="Modèle" value={v.model ?? "—"} />
-          <Row t={t} icon={Power} label="État ACC" value={v.acc == null ? "—" : v.acc ? "Marche" : "Arrêt"} valueColor={v.acc ? ONLINE : OFFLINE} />
-          <Row t={t} icon={Hash} label="Immatriculation" value={v.plate ?? "—"} mono />
-          <Row t={t} icon={Battery} label="Batterie interne" value={v.battery != null ? `${v.battery}%` : "—"} />
-          <Row t={t} icon={Zap} label="Tension véhicule" value={v.voltage != null ? `${v.voltage} V` : "—"} />
-          <Row t={t} icon={Radio} label="Signal GSM" value={v.gsm != null ? `${v.gsm}/5` : "—"} />
-          <Row t={t} icon={Satellite} label="Satellites GPS" value={v.sats != null ? `${v.sats}` : "—"} />
-          <Row t={t} icon={Gauge} label="Odomètre" value={v.odo != null ? `${convKm(v.odo, units).toLocaleString("fr-FR")} ${distUnit(units, tr)}` : "—"} mono />
-          <EditableRow t={t} icon={CreditCard} label="Carte SIM" value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim })} />
-          <EditableRow t={t} icon={Phone} label="Numéro de la SIM" value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
-          <Row t={t} icon={Hash} label="ICCID" value={v.iccid ?? "—"} mono />
-          <Row t={t} icon={UserRound} label="Contact utilisateur" value={v.owner ?? "—"} last />
+          <Row t={t} icon={Hash} label={tr("detail.imei")} value={v.imei} mono />
+          <Row t={t} icon={Cpu} label={tr("detail.model")} value={v.model ?? "—"} />
+          <Row t={t} icon={Power} label={tr("detail.accState")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
+          <Row t={t} icon={Hash} label={tr("detail.plate")} value={v.plate ?? "—"} mono />
+          <Row t={t} icon={Battery} label={tr("detail.intBattery")} value={v.battery != null ? `${v.battery}%` : "—"} />
+          <Row t={t} icon={Zap} label={tr("detail.vehVoltage")} value={v.voltage != null ? `${v.voltage} V` : "—"} />
+          <Row t={t} icon={Radio} label={tr("detail.gsm")} value={v.gsm != null ? `${v.gsm}/5` : "—"} />
+          <Row t={t} icon={Satellite} label={tr("detail.sats")} value={v.sats != null ? `${v.sats}` : "—"} />
+          <Row t={t} icon={Gauge} label={tr("detail.odo")} value={v.odo != null ? `${convKm(v.odo, units).toLocaleString("fr-FR")} ${distUnit(units, tr)}` : "—"} mono />
+          <EditableRow t={t} icon={CreditCard} label={tr("detail.sim")} value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim })} />
+          <EditableRow t={t} icon={Phone} label={tr("detail.simNumber")} value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
+          <Row t={t} icon={Hash} label={tr("detail.iccid")} value={v.iccid ?? "—"} mono />
+          <Row t={t} icon={UserRound} label={tr("detail.ownerContact")} value={v.owner ?? "—"} last />
         </Glass>
-
-        <Text style={{ fontSize: 11, color: t.sub, textAlign: "center", fontFamily: font.body.regular }}>
-          Édition persistée (base app) — étape 5
-        </Text>
       </ScrollView>
 
       <PasswordSheet
         t={t}
         visible={pwdAction !== null}
-        title={pwdAction === "cut" ? "Couper le moteur" : "Redémarrer le moteur"}
+        title={pwdAction === "cut" ? tr("detail.cutTitle") : tr("detail.restartTitle")}
         danger={pwdAction === "cut"}
-        note={pwdAction === "cut" ? "Assurez-vous que le véhicule ralentit ou est à l'arrêt avant de couper le moteur." : null}
-        confirmLabel={pwdAction === "cut" ? "Couper le moteur" : "Redémarrer le moteur"}
+        note={pwdAction === "cut" ? tr("detail.cutNote") : null}
+        confirmLabel={pwdAction === "cut" ? tr("detail.cutTitle") : tr("detail.restartTitle")}
         onConfirm={confirmPwd}
         onClose={() => setPwdAction(null)}
       />

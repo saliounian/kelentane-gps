@@ -3,6 +3,7 @@ import { LayoutRectangle, Pressable, ScrollView, Text, View } from "react-native
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, Clock, MapPin, Pause, Play, RotateCcw } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -25,6 +26,7 @@ type SpeedMode = keyof typeof SPEEDS;
 
 export function TrajectoryScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "Traj">>();
@@ -43,7 +45,7 @@ export function TrajectoryScreen() {
         const r = await fetchRoute(params.vehicleId);
         if (!alive) return;
         setPts(r);
-        setError(r.length ? null : "Aucun trajet sur la période");
+        setError(r.length ? null : tr("traj.noTrip"));
       } catch (e) {
         if (alive) setError((e as Error).message);
       }
@@ -124,7 +126,7 @@ export function TrajectoryScreen() {
           <Glass t={t} dark={dark} style={{ padding: 16 }}>
             {/* lecture live */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>Lecture du trajet</Text>
+              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("traj.playback")}</Text>
               <Text style={{ fontSize: 22, color: cur && cur.speed > 0 ? ACCENT : t.sub, fontFamily: font.mono.semibold }}>
                 {cur?.speed ?? 0}
                 <Text style={{ fontSize: 11, color: t.sub }}> km/h</Text>
@@ -143,7 +145,7 @@ export function TrajectoryScreen() {
                 </View>
               </View>
             ) : (
-              <Text style={{ color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{error ?? "Chargement…"}</Text>
+              <Text style={{ color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{error ?? tr("common.loading")}</Text>
             )}
 
             {/* transport */}
@@ -167,16 +169,16 @@ export function TrajectoryScreen() {
                 onPress={() => setSpeedMode((m) => (m === "Lent" ? "Moyen" : m === "Moyen" ? "Vite" : "Lent"))}
                 style={{ paddingHorizontal: 10, height: 32, borderRadius: 10, justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}
               >
-                <Text style={{ fontSize: 12, color: ACCENT, fontFamily: font.body.bold }}>{speedMode}</Text>
+                <Text style={{ fontSize: 12, color: ACCENT, fontFamily: font.body.bold }}>{speedMode === "Lent" ? tr("traj.slow") : speedMode === "Moyen" ? tr("traj.medium") : tr("traj.fast")}</Text>
               </Pressable>
               <GlassButton t={t} icon={RotateCcw} onPress={() => (setProgress(0), setPlaying(true))} />
             </View>
           </Glass>
 
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <Metric t={t} label="Distance" value={summary.dist} unit="km" />
-            <Metric t={t} label="Durée" value={summary.dur} />
-            <Metric t={t} label="Vit. max" value={`${summary.max}`} unit="km/h" />
+            <Metric t={t} label={tr("traj.distance")} value={summary.dist} unit="km" />
+            <Metric t={t} label={tr("traj.duration")} value={summary.dur} />
+            <Metric t={t} label={tr("traj.maxSpeed")} value={`${summary.max}`} unit="km/h" />
           </View>
         </View>
       </ScrollView>

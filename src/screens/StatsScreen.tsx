@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { ACCENT, ALERT, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -11,6 +12,7 @@ import type { StatsReport } from "../types/reports";
 
 export function StatsScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const { vehicles } = useVehicles();
   const [vid, setVid] = useState<number | null>(null);
@@ -55,7 +57,7 @@ export function StatsScreen() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 110, paddingHorizontal: 14, gap: 12 }}>
         <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5, paddingHorizontal: 4 }}>
-          Statistiques
+          {tr("stats.title")}
         </Text>
 
         {/* sélecteur véhicule */}
@@ -77,7 +79,7 @@ export function StatsScreen() {
         {error ? (
           <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{error}</Text>
         ) : !data ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>Chargement…</Text>
+          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("common.loading")}</Text>
         ) : (
           <>
             {/* jour sélectionné */}
@@ -95,27 +97,27 @@ export function StatsScreen() {
 
             {/* résumé hebdo */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <Metric t={t} label="Total semaine" value={`${data.total}`} unit="km" />
-              <Metric t={t} label="Moyenne / j" value={`${data.avgPerDay}`} unit="km" />
-              <Metric t={t} label="Jour max" value={`${data.maxDay}`} unit="km" />
+              <Metric t={t} label={tr("stats.weekTotal")} value={`${data.total}`} unit="km" />
+              <Metric t={t} label={tr("stats.avgPerDay")} value={`${data.avgPerDay}`} unit="km" />
+              <Metric t={t} label={tr("stats.maxDay")} value={`${data.maxDay}`} unit="km" />
             </View>
 
             {/* activité */}
             <Text style={{ fontSize: 13, color: t.sub, paddingLeft: 4, marginTop: 4, fontFamily: font.body.bold }}>
-              Activité de la semaine
+              {tr("stats.weekActivity")}
             </Text>
             {a ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <View style={{ width: "48%" }}><Metric t={t} label="Temps de conduite" value={a.drive} small /></View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Temps à l'arrêt" value={a.idle} small /></View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Trajets" value={`${a.trips}`} /></View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Arrêts" value={`${a.stops}`} /></View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Vitesse moy" value={`${a.avg}`} unit="km/h" /></View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Vitesse max" value={`${a.max}`} unit="km/h" /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.drive")} value={a.drive} small /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.idle")} value={a.idle} small /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.trips")} value={`${a.trips}`} /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.stops")} value={`${a.stops}`} /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.avgSpeed")} value={`${a.avg}`} unit="km/h" /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.maxSpeed")} value={`${a.max}`} unit="km/h" /></View>
                 <View style={{ width: "48%" }}>
-                  <Metric t={t} label="Excès de vitesse" value={`${a.over}`} valueColor={a.over > 0 ? ALERT : ONLINE} small />
+                  <Metric t={t} label={tr("stats.over")} value={`${a.over}`} valueColor={a.over > 0 ? ALERT : ONLINE} small />
                 </View>
-                <View style={{ width: "48%" }}><Metric t={t} label="Jours actifs" value={`${a.days}/7`} small /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.activeDays")} value={`${a.days}/7`} small /></View>
               </View>
             ) : null}
           </>

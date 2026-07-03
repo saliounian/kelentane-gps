@@ -2,6 +2,7 @@ import { Text, View } from "react-native";
 import MapView, { Marker, PROVIDER_DEFAULT, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Bell, ChevronLeft, MapPin, X } from "lucide-react-native";
 import { ALERT, hexA } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -12,6 +13,7 @@ import type { RootStackParamList } from "../navigation/types";
 
 export function AlarmLocationScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "AlarmLocation">>();
@@ -27,14 +29,14 @@ export function AlarmLocationScreen() {
       {/* header */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingTop: insets.top + 8, paddingHorizontal: 14, paddingBottom: 8 }}>
         <GlassButton t={t} icon={ChevronLeft} size={38} onPress={() => nav.goBack()} />
-        <Text style={{ fontSize: 17, color: t.text, fontFamily: font.display.extrabold }}>Emplacement de l'alarme</Text>
+        <Text style={{ fontSize: 17, color: t.text, fontFamily: font.display.extrabold }}>{tr("alarmLoc.title")}</Text>
       </View>
 
       {/* bandeau adresse */}
       <View style={{ marginHorizontal: 14, marginBottom: 10 }}>
         <Glass t={t} dark={dark} radius={14} style={{ flexDirection: "row", gap: 8, padding: 12 }}>
           <MapPin size={15} color={ALERT} />
-          <Text style={{ flex: 1, fontSize: 12.5, color: t.text, lineHeight: 18, fontFamily: font.body.regular }}>{a.addr ?? "Adresse indisponible"}</Text>
+          <Text style={{ flex: 1, fontSize: 12.5, color: t.text, lineHeight: 18, fontFamily: font.body.regular }}>{a.addr ?? tr("common.noAddress")}</Text>
         </Glass>
       </View>
 
@@ -54,10 +56,10 @@ export function AlarmLocationScreen() {
             <X size={15} color={dark ? "#aaa" : "#888"} onPress={() => nav.goBack()} />
           </View>
           <Text style={{ fontSize: 12.5, color: dark ? "#fff" : "#111", lineHeight: 20, fontFamily: font.body.regular }}>
-            <Text style={{ fontFamily: font.body.bold }}>Nom : </Text>{a.vehicle}{"\n"}
-            <Text style={{ fontFamily: font.body.bold }}>Statut : </Text>{a.statusText} · {a.speed} km/h{"\n"}
-            <Text style={{ fontFamily: font.body.bold }}>Signal : </Text>{a.dt}{"\n"}
-            <Text style={{ fontFamily: font.body.bold }}>Temps : </Text>{a.dt}
+            <Text style={{ fontFamily: font.body.bold }}>{tr("alarmLoc.name")} : </Text>{a.vehicle}{"\n"}
+            <Text style={{ fontFamily: font.body.bold }}>{tr("alarmLoc.status")} : </Text>{a.statusText} · {a.speed} km/h{"\n"}
+            <Text style={{ fontFamily: font.body.bold }}>{tr("alarmLoc.signal")} : </Text>{a.dt}{"\n"}
+            <Text style={{ fontFamily: font.body.bold }}>{tr("alarmLoc.time")} : </Text>{a.dt}
           </Text>
         </View>
 
