@@ -6,7 +6,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Battery, Plus, Search } from "lucide-react-native";
 import { ACCENT, hexA, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme/ThemeProvider";
+import { usePrefs } from "../state/prefs";
+import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { Glass, StatusDot } from "../ui";
@@ -14,6 +17,8 @@ import type { RootStackParamList } from "../navigation/types";
 
 export function ListScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
+  const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { vehicles, loading, error } = useVehicles();
@@ -117,8 +122,8 @@ export function ListScreen() {
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Text style={{ fontSize: 15, color: t.text, fontFamily: font.mono.semibold }}>
-                        {v.speed}
-                        <Text style={{ fontSize: 10, color: t.sub }}> km/h</Text>
+                        {convSpeed(v.speed, units)}
+                        <Text style={{ fontSize: 10, color: t.sub }}> {speedUnit(units, tr)}</Text>
                       </Text>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                         <Battery size={11} color={t.sub} />

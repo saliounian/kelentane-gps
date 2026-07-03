@@ -3,9 +3,11 @@ import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "./src/i18n";
 import { useAppFonts } from "./src/theme/fonts";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
 import { AuthProvider, useAuth } from "./src/state/auth";
+import { PrefsProvider } from "./src/state/prefs";
 import { IconOverridesProvider } from "./src/state/iconOverrides";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { AuthScreen, SessionSplash } from "./src/screens/AuthScreen";
@@ -42,11 +44,13 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider initialDark>
-          <AuthProvider>
-            <IconOverridesProvider>
-              <Root />
-            </IconOverridesProvider>
-          </AuthProvider>
+          <PrefsProvider>
+            <AuthProvider>
+              <IconOverridesProvider>
+                <Root />
+              </IconOverridesProvider>
+            </AuthProvider>
+          </PrefsProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

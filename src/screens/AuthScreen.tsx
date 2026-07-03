@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Check, Hash, KeyRound, Moon, Phone, Sun, UserRound } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -8,13 +9,14 @@ import { useTheme } from "../theme/ThemeProvider";
 import { useAuth, suggestUsername } from "../state/auth";
 import { BottomSheet, Field, KMonogram } from "../ui";
 
-/** Écran de vérification de session (authStatus === "checking"). Maquette : SessionSplash. */
+/** Écran de vérification de session (authStatus === "checking"). */
 export function SessionSplash() {
   const { t } = useTheme();
+  const { t: tr } = useTranslation();
   return (
     <View style={{ flex: 1, backgroundColor: t.bg, alignItems: "center", justifyContent: "center", gap: 14 }}>
       <KMonogram />
-      <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>Vérification de la session…</Text>
+      <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("auth.sessionCheck")}</Text>
     </View>
   );
 }
@@ -22,6 +24,7 @@ export function SessionSplash() {
 /** Gate racine quand authStatus === "out" : connexion + auto-inscription. */
 export function AuthScreen() {
   const { t, dark, toggle } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<"login" | "register">("login");
   const [forgot, setForgot] = useState(false);
@@ -40,7 +43,7 @@ export function AuthScreen() {
           <KMonogram size={48} />
           <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, marginTop: 14, letterSpacing: -0.5 }}>kelentane</Text>
           <Text style={{ fontSize: 13, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
-            {view === "login" ? "Suivi GPS & télématique" : "Créer un compte"}
+            {view === "login" ? tr("auth.tagline") : tr("auth.createAccount")}
           </Text>
         </View>
 
@@ -60,6 +63,7 @@ export function AuthScreen() {
 
 function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>["t"]; onRegister: () => void; onForgot: () => void }) {
   const { signIn } = useAuth();
+  const { t: tr } = useTranslation();
   const [id, setId] = useState("");
   const [pwd, setPwd] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -81,15 +85,15 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
 
   return (
     <>
-      <Field t={t} label="Identifiant" icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={(v) => { setId(v); setError(null); }} />
-      <Field t={t} label="Mot de passe" icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setError(null); }} />
+      <Field t={t} label={tr("auth.identifier")} icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={(v) => { setId(v); setError(null); }} />
+      <Field t={t} label={tr("auth.password")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setError(null); }} />
       {error ? <ErrLine t={t} msg={error} /> : null}
-      <PrimaryBtn t={t} label={loading ? "Connexion…" : "Se connecter"} enabled={canSubmit && !loading} onPress={submit} />
+      <PrimaryBtn t={t} label={loading ? tr("auth.loggingIn") : tr("auth.login")} enabled={canSubmit && !loading} onPress={submit} />
       <Pressable onPress={onRegister} style={{ marginTop: 10, padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-        <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.bold }}>Créer un compte</Text>
+        <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.bold }}>{tr("auth.createAccount")}</Text>
       </Pressable>
       <Pressable onPress={onForgot} style={{ marginTop: 16, alignItems: "center" }}>
-        <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.semibold }}>Mot de passe oublié ?</Text>
+        <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.semibold }}>{tr("auth.forgot")}</Text>
       </Pressable>
     </>
   );
@@ -97,6 +101,7 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
 
 function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBack: () => void }) {
   const { signUp, checkUsername } = useAuth();
+  const { t: tr } = useTranslation();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [username, setUsername] = useState("");
@@ -112,7 +117,6 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
     if (!touched) setUsername(suggestion);
   }, [suggestion, touched]);
 
-  // vérif disponibilité (debounce)
   useEffect(() => {
     const u = username.trim();
     if (u.length < 1) return setTaken(false);
@@ -124,8 +128,8 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
   const canSubmit = fullName.trim().length > 1 && phoneDigits.length >= 9 && username.trim().length > 0 && !taken && pwd.length >= 4 && pwd === pwd2;
 
   const submit = async () => {
-    if (taken) return setErr("Ce nom d'utilisateur est déjà pris — modifie-le pour continuer.");
-    if (!canSubmit || loading) return setErr(pwd !== pwd2 ? "Les mots de passe ne correspondent pas." : "Vérifie les champs.");
+    if (taken) return setErr(tr("auth.usernameTakenLong"));
+    if (!canSubmit || loading) return setErr(pwd !== pwd2 ? tr("auth.pwdMismatch") : tr("auth.checkFields"));
     setErr(null);
     setLoading(true);
     try {
@@ -139,31 +143,32 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
 
   return (
     <>
-      <Field t={t} label="Nom complet" icon={UserRound} placeholder="Aliou Diop" value={fullName} onChangeText={(v) => { setFullName(v); setErr(null); }} />
-      <Field t={t} label="Numéro de téléphone" icon={Phone} placeholder="77 123 45 65" keyboardType="phone-pad" value={phone} onChangeText={(v) => { setPhone(v); setErr(null); }} />
-      <Field t={t} label="Nom d'utilisateur" icon={Hash} placeholder="Aliou77123" value={username} onChangeText={(v) => { setUsername(v); setTouched(true); setErr(null); }} />
+      <Field t={t} label={tr("auth.fullName")} icon={UserRound} placeholder="Aliou Diop" value={fullName} onChangeText={(v) => { setFullName(v); setErr(null); }} />
+      <Field t={t} label={tr("auth.phone")} icon={Phone} placeholder="77 123 45 65" keyboardType="phone-pad" value={phone} onChangeText={(v) => { setPhone(v); setErr(null); }} />
+      <Field t={t} label={tr("auth.username")} icon={Hash} placeholder="Aliou77123" value={username} onChangeText={(v) => { setUsername(v); setTouched(true); setErr(null); }} />
       {taken ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 12, paddingLeft: 2 }}>
           <AlertTriangle size={12} color={ALERT} />
-          <Text style={{ fontSize: 11.5, color: ALERT, fontFamily: font.body.medium }}>Déjà pris — choisis un autre nom d'utilisateur.</Text>
+          <Text style={{ fontSize: 11.5, color: ALERT, fontFamily: font.body.medium }}>{tr("auth.usernameTaken")}</Text>
         </View>
       ) : (
         <Text style={{ fontSize: 11, color: t.sub, marginTop: -8, marginBottom: 12, paddingLeft: 2, fontFamily: font.body.regular }}>
-          Suggéré automatiquement (prénom + 5 premiers chiffres du téléphone) — modifiable.
+          {tr("auth.usernameHint")}
         </Text>
       )}
-      <Field t={t} label="Mot de passe" icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setErr(null); }} />
-      <Field t={t} label="Confirmer le mot de passe" icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setErr(null); }} />
+      <Field t={t} label={tr("auth.password")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setErr(null); }} />
+      <Field t={t} label={tr("auth.confirmPassword")} icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setErr(null); }} />
       {err ? <ErrLine t={t} msg={err} /> : null}
-      <PrimaryBtn t={t} label={loading ? "Création…" : "Créer mon compte"} enabled={canSubmit && !loading} onPress={submit} />
+      <PrimaryBtn t={t} label={loading ? tr("auth.creating") : tr("auth.createMyAccount")} enabled={canSubmit && !loading} onPress={submit} />
       <Pressable onPress={onBack} style={{ marginTop: 16, alignItems: "center" }}>
-        <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.semibold }}>J'ai déjà un compte — Se connecter</Text>
+        <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.semibold }}>{tr("auth.haveAccount")}</Text>
       </Pressable>
     </>
   );
 }
 
 function ForgotContent({ t, onClose }: { t: ReturnType<typeof useTheme>["t"]; onClose: () => void }) {
+  const { t: tr } = useTranslation();
   const [id, setId] = useState("");
   const [sent, setSent] = useState(false);
   if (sent) {
@@ -172,25 +177,23 @@ function ForgotContent({ t, onClose }: { t: ReturnType<typeof useTheme>["t"]; on
         <View style={{ width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: hexA(ONLINE, 0.16), marginBottom: 12 }}>
           <Check size={24} color={ONLINE} />
         </View>
-        <Text style={{ fontSize: 16, color: t.text, fontFamily: font.display.bold, marginBottom: 6 }}>Demande envoyée</Text>
+        <Text style={{ fontSize: 16, color: t.text, fontFamily: font.display.bold, marginBottom: 6 }}>{tr("auth.requestSent")}</Text>
         <Text style={{ fontSize: 13, color: t.sub, textAlign: "center", marginBottom: 16, fontFamily: font.body.regular }}>
-          L'équipe Kelentane te contactera avec un nouveau mot de passe.
+          {tr("auth.requestSentDesc")}
         </Text>
         <Pressable onPress={onClose} style={{ width: "100%", padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-          <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.bold }}>Fermer</Text>
+          <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.bold }}>{tr("common.close")}</Text>
         </Pressable>
       </View>
     );
   }
   return (
     <>
-      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>Mot de passe oublié</Text>
-      <Text style={{ fontSize: 12, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>
-        Contacte Kelentane avec ton identifiant pour recevoir un nouveau mot de passe. Aucune inscription en libre-service : les comptes sont créés par l'équipe.
-      </Text>
-      <Field t={t} label="Identifiant ou téléphone" icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={setId} />
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("auth.forgotTitle")}</Text>
+      <Text style={{ fontSize: 12, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>{tr("auth.forgotDesc")}</Text>
+      <Field t={t} label={tr("auth.forgotField")} icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={setId} />
       <Pressable onPress={() => setSent(true)} style={{ width: "100%", marginTop: 4, padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
-        <Text style={{ fontSize: 14, color: LIME_ON, fontFamily: font.body.bold }}>Envoyer la demande</Text>
+        <Text style={{ fontSize: 14, color: LIME_ON, fontFamily: font.body.bold }}>{tr("auth.sendRequest")}</Text>
       </Pressable>
     </>
   );

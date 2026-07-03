@@ -1,0 +1,11 @@
+{
+  "tabs": { "map": "Kaart", "list": "Woto yi", "alarm": "Alarm", "stats": "Stats", "me": "Sama profil" },
+  "auth": {
+    "identifier": "Tur",
+    "password": "Baatujall",
+    "login": "Dugg",
+    "createAccount": "Sos ab kontu",
+    "forgot": "Fàtte nga baatujall bi ?"
+  },
+  "profile": { "title": "Profil", "language": "Làkk", "logout": "Génn" }
+}

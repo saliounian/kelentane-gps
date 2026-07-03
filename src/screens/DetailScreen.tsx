@@ -30,7 +30,10 @@ import {
 } from "lucide-react-native";
 import { freshColor, hexA, OFFLINE, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme/ThemeProvider";
+import { usePrefs } from "../state/prefs";
+import { convKm, convSpeed, distUnit, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { sendCommand, type CommandType } from "../data/commands";
 import { ApiError, patchVehicle, type VehiclePatch } from "../data/api";
@@ -77,6 +80,8 @@ function Label({ t, children }: { t: Theme; children: string }) {
 
 export function DetailScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
+  const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { params } = useRoute<RouteProp<RootStackParamList, "Detail">>();
@@ -160,9 +165,9 @@ export function DetailScreen() {
 
         {/* metrics */}
         <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", gap: 8 }}>
-          <Metric t={t} label="Vitesse" value={`${v.speed}`} unit="km/h" />
-          <Metric t={t} label="Batterie" value={v.battery != null ? `${v.battery}` : "—"} unit="%" />
-          <Metric t={t} label="Tension" value={v.voltage != null ? `${v.voltage}` : "—"} unit="V" />
+          <Metric t={t} label={tr("common.speed")} value={`${convSpeed(v.speed, units)}`} unit={speedUnit(units, tr)} />
+          <Metric t={t} label={tr("common.battery")} value={v.battery != null ? `${v.battery}` : "—"} unit="%" />
+          <Metric t={t} label={tr("common.tension")} value={v.voltage != null ? `${v.voltage}` : "—"} unit="V" />
         </Glass>
 
         {/* info rows */}
@@ -222,7 +227,7 @@ export function DetailScreen() {
           <Row t={t} icon={Zap} label="Tension véhicule" value={v.voltage != null ? `${v.voltage} V` : "—"} />
           <Row t={t} icon={Radio} label="Signal GSM" value={v.gsm != null ? `${v.gsm}/5` : "—"} />
           <Row t={t} icon={Satellite} label="Satellites GPS" value={v.sats != null ? `${v.sats}` : "—"} />
-          <Row t={t} icon={Gauge} label="Odomètre" value={v.odo != null ? `${v.odo.toLocaleString("fr-FR")} km` : "—"} mono />
+          <Row t={t} icon={Gauge} label="Odomètre" value={v.odo != null ? `${convKm(v.odo, units).toLocaleString("fr-FR")} ${distUnit(units, tr)}` : "—"} mono />
           <EditableRow t={t} icon={CreditCard} label="Carte SIM" value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim })} />
           <EditableRow t={t} icon={Phone} label="Numéro de la SIM" value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
           <Row t={t} icon={Hash} label="ICCID" value={v.iccid ?? "—"} mono />

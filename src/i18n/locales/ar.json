@@ -1,0 +1,34 @@
+{
+  "tabs": { "map": "الخريطة", "list": "المركبات", "alarm": "التنبيهات", "stats": "إحصاءات", "me": "الملف" },
+  "common": {
+    "speed": "السرعة",
+    "battery": "البطارية",
+    "tension": "الجهد",
+    "connection": "الاتصال",
+    "state": "الحالة",
+    "online": "متصل",
+    "offline": "غير متصل",
+    "enRoute": "يتحرك",
+    "stopped": "متوقف",
+    "loading": "جارٍ التحميل…",
+    "close": "إغلاق"
+  },
+  "auth": {
+    "tagline": "تتبّع GPS وإدارة الأسطول",
+    "identifier": "المعرّف",
+    "password": "كلمة المرور",
+    "login": "تسجيل الدخول",
+    "loggingIn": "جارٍ الدخول…",
+    "createAccount": "إنشاء حساب",
+    "forgot": "هل نسيت كلمة المرور؟",
+    "haveAccount": "لديّ حساب — تسجيل الدخول",
+    "wrongCreds": "المعرّف أو كلمة المرور غير صحيحة."
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "account": "الحساب",
+    "settings": "الإعدادات",
+    "language": "اللغة",
+    "logout": "تسجيل الخروج"
+  }
+}

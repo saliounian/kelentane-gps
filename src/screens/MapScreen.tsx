@@ -4,10 +4,13 @@ import MapView, { PROVIDER_DEFAULT, type MapType, type Region } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import { Clock, Crosshair, Info, Layers, Navigation, Route, Search } from "lucide-react-native";
 import { ACCENT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
+import { usePrefs } from "../state/prefs";
+import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { ActionBtn, GlassButton, KMonogram, Metric, StatusPill } from "../ui";
@@ -26,6 +29,8 @@ function fmtDT(iso: string | null): string {
 
 export function MapScreen() {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
+  const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { vehicles, error } = useVehicles();
@@ -176,19 +181,19 @@ export function MapScreen() {
           </View>
 
           <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
-            <Metric t={t} label="Vitesse" value={`${active.speed}`} unit="km/h" />
-            <Metric t={t} label="Batterie" value={active.battery != null ? `${active.battery}` : "—"} unit="%" />
+            <Metric t={t} label={tr("common.speed")} value={`${convSpeed(active.speed, units)}`} unit={speedUnit(units, tr)} />
+            <Metric t={t} label={tr("common.battery")} value={active.battery != null ? `${active.battery}` : "—"} unit="%" />
             <Metric
               t={t}
-              label="Connexion"
-              value={active.status === "offline" ? "Hors ligne" : "En ligne"}
+              label={tr("common.connection")}
+              value={active.status === "offline" ? tr("common.offline") : tr("common.online")}
               valueColor={active.status === "offline" ? OFFLINE : ONLINE}
               small
             />
             <Metric
               t={t}
-              label="État"
-              value={active.speed > 0 ? "En route" : "Arrêté"}
+              label={tr("common.state")}
+              value={active.speed > 0 ? tr("common.enRoute") : tr("common.stopped")}
               valueColor={active.speed > 0 ? ACCENT : PARKED}
               small
             />

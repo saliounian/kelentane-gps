@@ -2,28 +2,28 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
+import { useTranslation } from "react-i18next";
 import { Bell, Check, ChevronRight, Copy, Gauge, Globe, Hash, KeyRound, LogOut, Map, Phone, Share2, UserRound } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth } from "../state/auth";
+import { usePrefs } from "../state/prefs";
+import { LANG_LABELS, LANGS } from "../i18n";
 import { useVehicles } from "../data/useVehicles";
 import { supabase } from "../data/supabase";
 import { claimShare, createShare } from "../data/shares";
 import { BottomSheet, Field, SectionLabel, Toggle } from "../ui";
 import type { LucideIcon } from "../types/models";
 
-const LANGS = ["Français", "Wolof", "English", "العربية"];
-
 export function ProfileScreen() {
   const { t } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const { session, signOut } = useAuth();
+  const { language, units, mapSource, setLanguage, setUnits, setMapSource } = usePrefs();
   const [me, setMe] = useState<{ name: string | null; phone: string | null; username: string | null }>({ name: null, phone: null, username: null });
-  const [lang, setLang] = useState(0);
   const [notif, setNotif] = useState(true);
-  const [units, setUnits] = useState<"km" | "mi">("km");
-  const [mapSrc, setMapSrc] = useState<"google" | "baidu">("google");
   const [pwdOpen, setPwdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [byeOpen, setByeOpen] = useState(false);
@@ -44,7 +44,7 @@ export function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 110 }}>
-        <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5, paddingHorizontal: 18, marginBottom: 14 }}>Profil</Text>
+        <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5, paddingHorizontal: 18, marginBottom: 14 }}>{tr("profile.title")}</Text>
 
         {/* header compte */}
         <View style={{ marginHorizontal: 14, marginBottom: 18, borderRadius: 22, padding: 16, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
@@ -57,33 +57,39 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        <SectionLabel t={t}>Compte</SectionLabel>
+        <SectionLabel t={t}>{tr("profile.account")}</SectionLabel>
         <Card t={t}>
-          <Row t={t} icon={UserRound} label="Nom" value={me.name ?? "—"} />
-          <Row t={t} icon={Phone} label="Téléphone" value={me.phone ?? "—"} />
-          <Row t={t} icon={Hash} label="Identifiant" value={me.username ?? "—"} last />
+          <Row t={t} icon={UserRound} label={tr("profile.name")} value={me.name ?? "—"} />
+          <Row t={t} icon={Phone} label={tr("profile.phone")} value={me.phone ?? "—"} />
+          <Row t={t} icon={Hash} label={tr("profile.identifier")} value={me.username ?? "—"} last />
         </Card>
 
-        <SectionLabel t={t}>Paramètres</SectionLabel>
+        <SectionLabel t={t}>{tr("profile.settings")}</SectionLabel>
         <Card t={t}>
-          <Row t={t} icon={Share2} label="Partager l'appareil" onPress={() => setShareOpen(true)} chevron />
-          <Row t={t} icon={KeyRound} label="Changer le mot de passe" onPress={() => setPwdOpen(true)} chevron />
-          <Row t={t} icon={Globe} label="Langue" value={LANGS[lang]} onPress={() => setLang((l) => (l + 1) % LANGS.length)} />
-          <RowToggle t={t} icon={Bell} label="Notifications" on={notif} set={setNotif} />
-          <Row t={t} icon={Gauge} label="Unités" value={units === "km" ? "km / km/h" : "mi / mph"} onPress={() => setUnits((u) => (u === "km" ? "mi" : "km"))} last />
+          <Row t={t} icon={Share2} label={tr("profile.share")} onPress={() => setShareOpen(true)} chevron />
+          <Row t={t} icon={KeyRound} label={tr("profile.changePwd")} onPress={() => setPwdOpen(true)} chevron />
+          <Row
+            t={t}
+            icon={Globe}
+            label={tr("profile.language")}
+            value={LANG_LABELS[language]}
+            onPress={() => setLanguage(LANGS[(LANGS.indexOf(language) + 1) % LANGS.length])}
+          />
+          <RowToggle t={t} icon={Bell} label={tr("profile.notifications")} on={notif} set={setNotif} />
+          <Row t={t} icon={Gauge} label={tr("profile.units")} value={tr(units === "km" ? "units.kmLabel" : "units.miLabel")} onPress={() => setUnits(units === "km" ? "mi" : "km")} last />
         </Card>
 
         {/* source carte */}
         <View style={{ marginHorizontal: 14, marginTop: 14, borderRadius: 22, padding: 14, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 }}>
             <IconBox t={t} icon={Map} />
-            <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>Source de la carte</Text>
+            <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("profile.mapSource")}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.line }}>
             {(["google", "baidu"] as const).map((id) => {
-              const on = mapSrc === id;
+              const on = mapSource === id;
               return (
-                <Pressable key={id} onPress={() => setMapSrc(id)} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: on ? ACCENT : "transparent" }}>
+                <Pressable key={id} onPress={() => setMapSource(id)} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: on ? ACCENT : "transparent" }}>
                   <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{id === "google" ? "Google Maps" : "Baidu"}</Text>
                 </Pressable>
               );
@@ -94,7 +100,7 @@ export function ProfileScreen() {
         <View style={{ marginHorizontal: 14, marginTop: 14 }}>
           <Pressable onPress={() => setByeOpen(true)} style={{ padding: 13, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: hexA(ALERT, 0.1), borderWidth: 1, borderColor: hexA(ALERT, 0.4) }}>
             <LogOut size={17} color={ALERT} />
-            <Text style={{ fontSize: 14, color: ALERT, fontFamily: font.body.bold }}>Déconnexion</Text>
+            <Text style={{ fontSize: 14, color: ALERT, fontFamily: font.body.bold }}>{tr("profile.logout")}</Text>
           </Pressable>
         </View>
 
@@ -106,10 +112,10 @@ export function ProfileScreen() {
       <ShareSheet t={t} visible={shareOpen} onClose={() => setShareOpen(false)} />
 
       <BottomSheet t={t} visible={byeOpen} onClose={() => setByeOpen(false)}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>Se déconnecter ?</Text>
-        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>Tu devras te reconnecter avec ton identifiant.</Text>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>{tr("profile.logoutQ")}</Text>
+        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>{tr("profile.logoutDesc")}</Text>
         <Pressable onPress={async () => { setByeOpen(false); await signOut(); }} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ALERT }}>
-          <Text style={{ fontSize: 15, color: "#fff", fontFamily: font.body.bold }}>Déconnexion</Text>
+          <Text style={{ fontSize: 15, color: "#fff", fontFamily: font.body.bold }}>{tr("profile.logout")}</Text>
         </Pressable>
       </BottomSheet>
     </View>
@@ -117,13 +123,14 @@ export function ProfileScreen() {
 }
 
 function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClose: () => void }) {
+  const { t: tr } = useTranslation();
   const [pwd, setPwd] = useState("");
   const [pwd2, setPwd2] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const save = async () => {
-    if (pwd.length < 4 || pwd !== pwd2) return setMsg("Mot de passe ≥ 4 caractères et identique.");
+    if (pwd.length < 4 || pwd !== pwd2) return setMsg(tr("profile.pwdRule"));
     const { error } = await supabase.auth.updateUser({ password: pwd });
-    setMsg(error ? error.message : "Mot de passe mis à jour.");
+    setMsg(error ? error.message : tr("profile.pwdUpdated"));
     if (!error) {
       setPwd("");
       setPwd2("");
@@ -131,18 +138,19 @@ function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boole
   };
   return (
     <BottomSheet t={t} visible={visible} onClose={onClose}>
-      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 12 }}>Changer le mot de passe</Text>
-      <Field t={t} label="Nouveau mot de passe" icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setMsg(null); }} />
-      <Field t={t} label="Confirmer" icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setMsg(null); }} />
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 12 }}>{tr("profile.changePwd")}</Text>
+      <Field t={t} label={tr("profile.newPwd")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setMsg(null); }} />
+      <Field t={t} label={tr("profile.confirm")} icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setMsg(null); }} />
       {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
       <Pressable onPress={save} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
-        <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>Mettre à jour</Text>
+        <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>{tr("profile.update")}</Text>
       </Pressable>
     </BottomSheet>
   );
 }
 
 function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClose: () => void }) {
+  const { t: tr } = useTranslation();
   const { vehicles } = useVehicles();
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -168,7 +176,7 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
     setMsg(null);
     try {
       await claimShare(claim);
-      setMsg("Appareil ajouté. Il apparaîtra dans ta liste.");
+      setMsg(tr("profile.deviceAdded"));
       setClaim("");
     } catch (e) {
       setMsg((e as Error).message);
@@ -177,9 +185,9 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
 
   return (
     <BottomSheet t={t} visible={visible} onClose={onClose}>
-      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>Partager l'appareil</Text>
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>{tr("profile.share")}</Text>
       <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 12, fontFamily: font.body.regular }}>
-        Choisis un véhicule pour générer un jeton de partage (lecture).
+        {tr("profile.shareDesc")}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         {vehicles.map((v) => (
@@ -194,19 +202,19 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
           <Text style={{ fontSize: 16, letterSpacing: 2, color: t.text, fontFamily: font.mono.semibold }}>{token}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             {copied ? <Check size={15} color={ONLINE} /> : <Copy size={15} color={ACCENT} />}
-            <Text style={{ fontSize: 12, color: copied ? ONLINE : ACCENT, fontFamily: font.body.bold }}>{copied ? "Copié" : "Copier"}</Text>
+            <Text style={{ fontSize: 12, color: copied ? ONLINE : ACCENT, fontFamily: font.body.bold }}>{copied ? tr("profile.copied") : tr("profile.copy")}</Text>
           </View>
         </Pressable>
       ) : null}
 
-      <Text style={{ fontSize: 13, color: t.sub, marginBottom: 8, fontFamily: font.body.bold }}>Ajouter un appareil partagé</Text>
+      <Text style={{ fontSize: 13, color: t.sub, marginBottom: 8, fontFamily: font.body.bold }}>{tr("profile.addShared")}</Text>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <View style={{ flex: 1 }}>
           <Field t={t} label="" icon={Share2} placeholder="KLN-XXXXXXXX" mono value={claim} onChangeText={setClaim} />
         </View>
       </View>
       <Pressable onPress={doClaim} disabled={!claim.trim()} style={{ padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: claim.trim() ? ACCENT : hexA(t.text, 0.12) }}>
-        <Text style={{ fontSize: 14, color: claim.trim() ? LIME_ON : t.sub, fontFamily: font.body.bold }}>Ajouter</Text>
+        <Text style={{ fontSize: 14, color: claim.trim() ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{tr("profile.add")}</Text>
       </Pressable>
       {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{msg}</Text> : null}
     </BottomSheet>

@@ -14,7 +14,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 7 | Km / Stats / Trajet via reports Traccar | ✅ |
 | 8 | Géofences CRUD + règles | ✅ |
 | 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | ✅ |
-| 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | ⬜ |
+| 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | 🚧 10a ✅ / 10b ⬜ |
 | 11 | Externaliser icônes en SVG | ⬜ |
 
 ## Dette technique BLOQUANTE avant mise en production
@@ -55,6 +55,18 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 - **[À suivre] notification-prefs / push** sont encore rattachés au propriétaire
   seed (pas au compte courant). Non-confidentiel (pas de donnée véhicule d'autrui),
   à raccorder au user à l'occasion.
+
+## i18n (étape 10)
+
+- **10a fait** : infra `i18next`/`react-i18next` + `expo-localization`, catalogues
+  `fr` (maître) + `en` complets, `wo`/`ar` partiels (fallback `fr`), langue persistée
+  (AsyncStorage), unités km/mi (contexte + conversions), source carte persistée.
+  Écrans extraits : TabBar, Auth, Profil ; unités appliquées Map/Liste/Détail.
+- **10b à faire** : extraire les chaînes des écrans restants (Alarmes, Km, Stats,
+  Trajet, Géofence, lignes Détail) + provider carte **Baidu** (SDK natif).
+- **[À vérifier humain] Traductions `wo`/`ar`** = ébauches, à faire relire par un
+  locuteur natif. **RTL (arabe)** : `I18nManager.forceRTL` exige un **redémarrage
+  de l'app** pour s'appliquer pleinement (pas de reload auto sans expo-updates).
 
 ## Décisions arrêtées (rappel)
 

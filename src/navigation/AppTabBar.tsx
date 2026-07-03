@@ -2,23 +2,25 @@ import { BlurView } from "expo-blur";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { BarChart3, Bell, Home, List, User } from "lucide-react-native";
 import { ACCENT } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import type { LucideIcon } from "../types/models";
 
-const ICONS: Record<string, { icon: LucideIcon; label: string }> = {
-  map: { icon: Home, label: "Carte" },
-  list: { icon: List, label: "Véhicules" },
-  alarm: { icon: Bell, label: "Alarmes" },
-  stats: { icon: BarChart3, label: "Stats" },
-  me: { icon: User, label: "Profil" },
+const ICONS: Record<string, { icon: LucideIcon; key: string }> = {
+  map: { icon: Home, key: "tabs.map" },
+  list: { icon: List, key: "tabs.list" },
+  alarm: { icon: Bell, key: "tabs.alarm" },
+  stats: { icon: BarChart3, key: "tabs.stats" },
+  me: { icon: User, key: "tabs.me" },
 };
 
 /** TabBar flottante en verre, pilotée par react-navigation. Maquette : `TabBar`. */
 export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const { t, dark } = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -70,7 +72,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
                   fontFamily: on ? font.body.bold : font.body.medium,
                 }}
               >
-                {meta.label}
+                {tr(meta.key)}
               </Text>
             </Pressable>
           );
