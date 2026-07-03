@@ -3,6 +3,7 @@ import { Injectable, NotFoundException, ServiceUnavailableException } from "@nes
 import { TraccarService } from "../traccar/traccar.service";
 import { DevicesService } from "../supabase/devices.service";
 import { SupabaseService } from "../supabase/supabase.service";
+import { AccessService } from "../supabase/access.service";
 
 @Injectable()
 export class SharesService {
@@ -10,6 +11,7 @@ export class SharesService {
     private readonly traccar: TraccarService,
     private readonly devices: DevicesService,
     private readonly supa: SupabaseService,
+    private readonly access: AccessService,
   ) {}
 
   private client() {
@@ -27,6 +29,8 @@ export class SharesService {
     const { devices } = await this.traccar.getFleet();
     const d = devices.find((x) => x.id === vehicleId);
     if (!d) throw new NotFoundException("Véhicule introuvable");
+    const allowed = await this.access.allowed(userId);
+    this.access.assertImei(allowed, d.uniqueId); // seul un ayant-accès peut partager
     const row = await this.devices.upsertByImei(d.uniqueId, d.id, {});
     if (!row) throw new ServiceUnavailableException("Base app indisponible");
 

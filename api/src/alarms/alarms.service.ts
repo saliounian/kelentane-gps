@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
+import { AccessService } from "../supabase/access.service";
 import type { TraccarDevice, TraccarEvent, TraccarPosition } from "../traccar/traccar.types";
 import type { AlarmEventVM, DeviceAnomaly, DeviceHealthVM, HealthStatus } from "./alarms.types";
 
@@ -25,13 +26,18 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AlarmsService {
-  constructor(private readonly traccar: TraccarService) {}
+  constructor(
+    private readonly traccar: TraccarService,
+    private readonly access: AccessService,
+  ) {}
 
-  /** Événements récents (24 h) → AlarmEventVM. Position approx = dernier point du device. */
-  async events(now: Date = new Date()): Promise<AlarmEventVM[]> {
-    const { devices, positions } = await this.traccar.getFleet();
+  /** Événements récents (24 h) → AlarmEventVM. FILTRÉ au périmètre du client. */
+  async events(userId: string, now: Date = new Date()): Promise<AlarmEventVM[]> {
+    const allowed = await this.access.allowed(userId);
+    const fleet = await this.traccar.getFleet();
+    const devices = fleet.devices.filter((d) => allowed.imeis.has(d.uniqueId));
     const posBy = new Map<number, TraccarPosition>();
-    for (const p of positions) posBy.set(p.deviceId, p);
+    for (const p of fleet.positions) posBy.set(p.deviceId, p);
     const nameBy = new Map<number, string>();
     for (const d of devices) nameBy.set(d.id, d.name);
 
@@ -60,12 +66,13 @@ export class AlarmsService {
     return out.sort((a, b) => (a.dt < b.dt ? 1 : -1));
   }
 
-  /** Santé dispositif calculée à partir des attributs (§6.4). */
-  async anomalies(now: Date = new Date()): Promise<DeviceHealthVM[]> {
+  /** Santé dispositif calculée (§6.4). FILTRÉ au périmètre du client. */
+  async anomalies(userId: string, now: Date = new Date()): Promise<DeviceHealthVM[]> {
+    const allowed = await this.access.allowed(userId);
     const { devices, positions } = await this.traccar.getFleet();
     const posBy = new Map<number, TraccarPosition>();
     for (const p of positions) posBy.set(p.deviceId, p);
-    return devices.map((d) => this.health(d, posBy.get(d.id), now));
+    return devices.filter((d) => allowed.imeis.has(d.uniqueId)).map((d) => this.health(d, posBy.get(d.id), now));
   }
 
   private eventId(e: TraccarEvent): string | null {

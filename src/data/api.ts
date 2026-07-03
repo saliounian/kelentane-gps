@@ -1,4 +1,5 @@
 import { API_URL } from "../config/env";
+import { authHeader } from "./authHeader";
 import type { VehicleVM } from "../types/vehicle";
 
 /** Erreur normalisée de l'API façade. */
@@ -15,7 +16,7 @@ export class ApiError extends Error {
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { signal, headers: { Accept: "application/json" } });
+    res = await fetch(`${API_URL}${path}`, { signal, headers: { Accept: "application/json", ...(await authHeader()) } });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");
   }
@@ -46,7 +47,7 @@ export async function patchVehicle(id: number, patch: VehiclePatch): Promise<Veh
   try {
     res = await fetch(`${API_URL}/vehicles/${id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
       body: JSON.stringify(patch),
     });
   } catch (e) {

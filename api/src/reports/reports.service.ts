@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
+import { AccessService } from "../supabase/access.service";
 import type { TraccarSummary } from "../traccar/traccar.types";
 import type { DayKm, KmReport, RoutePoint, StatsReport } from "./reports.types";
 
@@ -8,7 +9,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly traccar: TraccarService) {}
+  constructor(
+    private readonly traccar: TraccarService,
+    private readonly access: AccessService,
+  ) {}
+
+  /** Vérifie que le client a accès à ce véhicule (via IMEI). */
+  private async assertAccess(userId: string, deviceId: number): Promise<void> {
+    const devices = await this.traccar.getDevices();
+    const d = devices.find((x) => x.id === deviceId);
+    if (!d) throw new NotFoundException("Véhicule introuvable");
+    const allowed = await this.access.allowed(userId);
+    if (!allowed.imeis.has(d.uniqueId)) throw new ForbiddenException("Accès refusé à ce véhicule");
+  }
 
   /** Résout un intervalle (7d/30d/custom) en bornes ISO alignées aux jours. */
   resolveRange(range?: string, from?: string, to?: string): { from: string; to: string } {
@@ -22,19 +35,24 @@ export class ReportsService {
     return { from: start.toISOString(), to: end.toISOString() };
   }
 
-  async km(deviceId: number, range: { from: string; to: string }): Promise<KmReport> {
+  async km(deviceId: number, range: { from: string; to: string }, userId: string): Promise<KmReport> {
     const { devices } = await this.traccar.getFleet();
-    if (!devices.some((d) => d.id === deviceId)) throw new NotFoundException("Véhicule introuvable");
+    const target = devices.find((d) => d.id === deviceId);
+    if (!target) throw new NotFoundException("Véhicule introuvable");
+    const allowed = await this.access.allowed(userId);
+    if (!allowed.imeis.has(target.uniqueId)) throw new ForbiddenException("Accès refusé à ce véhicule");
 
     const daily = await this.traccar.getSummary([deviceId], range.from, range.to, true);
     const days = this.bucketDays(range.from, range.to, daily);
     const total = Math.round(days.reduce((a, d) => a + d.km, 0));
     const avgPerDay = days.length ? Math.round(total / days.length) : 0;
 
-    const all = await this.traccar.getSummary(devices.map((d) => d.id), range.from, range.to, false);
+    // « total par véhicule » borné au périmètre du client (pas toute la flotte).
+    const visible = devices.filter((d) => allowed.imeis.has(d.uniqueId));
+    const all = await this.traccar.getSummary(visible.map((d) => d.id), range.from, range.to, false);
     const totalBy = new Map<number, number>();
     for (const s of all) totalBy.set(s.deviceId, (totalBy.get(s.deviceId) ?? 0) + s.distance);
-    const byVehicle = devices.map((d) => ({
+    const byVehicle = visible.map((d) => ({
       id: d.id,
       name: d.name,
       total: Math.round((totalBy.get(d.id) ?? 0) / 1000),
@@ -43,7 +61,8 @@ export class ReportsService {
     return { range, days, total, avgPerDay, byVehicle };
   }
 
-  async stats(deviceId: number, range: { from: string; to: string }): Promise<StatsReport> {
+  async stats(deviceId: number, range: { from: string; to: string }, userId: string): Promise<StatsReport> {
+    await this.assertAccess(userId, deviceId);
     const { devices } = await this.traccar.getFleet();
     if (!devices.some((d) => d.id === deviceId)) throw new NotFoundException("Véhicule introuvable");
 
@@ -84,7 +103,8 @@ export class ReportsService {
     };
   }
 
-  async route(deviceId: number, from: string, to: string): Promise<RoutePoint[]> {
+  async route(deviceId: number, from: string, to: string, userId: string): Promise<RoutePoint[]> {
+    await this.assertAccess(userId, deviceId);
     const positions = await this.traccar.getRoute(deviceId, from, to);
     return positions.map((p) => ({
       lat: p.latitude,

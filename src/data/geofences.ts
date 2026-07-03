@@ -1,5 +1,6 @@
 import { API_URL } from "../config/env";
 import { ApiError } from "./api";
+import { authHeader } from "./authHeader";
 import type { CreateGeofenceBody, GeofenceVM } from "../types/geofence";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -7,7 +8,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { Accept: "application/json", "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      headers: { Accept: "application/json", "Content-Type": "application/json", ...(await authHeader()), ...(init?.headers ?? {}) },
     });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");

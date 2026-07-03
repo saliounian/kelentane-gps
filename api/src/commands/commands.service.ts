@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
 import { SupabaseService } from "../supabase/supabase.service";
+import { AccessService } from "../supabase/access.service";
 
 /** Types de commande exposés au mobile (§9.4). */
 export type CommandType = "engineStop" | "engineResume" | "gpsReboot";
@@ -21,6 +22,7 @@ export class CommandsService {
   constructor(
     private readonly traccar: TraccarService,
     private readonly supa: SupabaseService,
+    private readonly access: AccessService,
   ) {}
 
   /**
@@ -30,7 +32,7 @@ export class CommandsService {
   async dispatch(
     deviceId: number,
     type: CommandType,
-    ctx: { email: string; password?: string },
+    ctx: { userId: string; email: string; password?: string },
   ): Promise<{ ackId: string; state: CommandState }> {
     if (SENSITIVE.includes(type)) {
       const ok = !!ctx.password && (await this.supa.verifyPassword(ctx.email, ctx.password));
@@ -42,8 +44,11 @@ export class CommandsService {
     try {
       const devices = await this.traccar.getDevices();
       const dev = devices.find((d) => d.id === deviceId);
+      const allowed = await this.access.allowed(ctx.userId);
+      if (dev && !allowed.imeis.has(dev.uniqueId)) throw new ForbiddenException("Accès refusé à ce véhicule");
       offline = !dev || dev.status === "offline";
-    } catch {
+    } catch (e) {
+      if (e instanceof ForbiddenException) throw e;
       return this.record(ackId, "error");
     }
     if (offline) return this.record(ackId, "offline");

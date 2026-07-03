@@ -1,9 +1,10 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch } from "@nestjs/common";
+import { Body, Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, UseGuards } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
+import { AuthGuard } from "../auth/auth.guard";
+import { CurrentUser, type AuthUser } from "../auth/current-user";
 import type { DevicePatch } from "../supabase/devices.service";
 import type { VehicleVM } from "./vehicle.vm";
 
-/** Corps de PATCH côté mobile (noms « produit » → colonnes DB). */
 interface PatchBody {
   name?: string;
   plate?: string;
@@ -14,22 +15,27 @@ interface PatchBody {
 }
 
 @Controller("vehicles")
+@UseGuards(AuthGuard)
 export class VehiclesController {
   constructor(private readonly vehicles: VehiclesService) {}
 
-  /** GET /vehicles → view-model §6.1 (Traccar + champs métier). */
+  /** GET /vehicles → view-model §6.1, FILTRÉ au périmètre du client. */
   @Get()
-  async list(): Promise<VehicleVM[]> {
+  async list(@CurrentUser() user: AuthUser): Promise<VehicleVM[]> {
     try {
-      return await this.vehicles.list();
-    } catch {
-      throw new HttpException("Cœur GPS injoignable", HttpStatus.BAD_GATEWAY);
+      return await this.vehicles.list(user.id);
+    } catch (e) {
+      throw this.wrap(e);
     }
   }
 
-  /** PATCH /vehicles/:id → persiste les champs métier éditables. */
+  /** PATCH /vehicles/:id → persiste les champs métier éditables (accès vérifié). */
   @Patch(":id")
-  async patch(@Param("id", ParseIntPipe) id: number, @Body() body: PatchBody): Promise<VehicleVM> {
+  async patch(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: PatchBody,
+    @CurrentUser() user: AuthUser,
+  ): Promise<VehicleVM> {
     const patch: DevicePatch = {};
     if (body.name !== undefined) patch.name = body.name;
     if (body.plate !== undefined) patch.plate = body.plate;
@@ -37,6 +43,15 @@ export class VehiclesController {
     if (body.iconKey !== undefined) patch.icon_key = body.iconKey;
     if (body.sim !== undefined) patch.sim_operator = body.sim;
     if (body.phone !== undefined) patch.sim_phone = body.phone;
-    return this.vehicles.patch(id, patch);
+    try {
+      return await this.vehicles.patch(id, patch, user.id);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  private wrap(e: unknown): HttpException {
+    if (e instanceof HttpException) return e;
+    return new HttpException("Cœur GPS injoignable", HttpStatus.BAD_GATEWAY);
   }
 }

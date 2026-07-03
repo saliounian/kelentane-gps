@@ -30,7 +30,7 @@ export class CommandsController {
     if (!type || !ALLOWED.includes(type)) {
       throw new HttpException("Type de commande invalide", HttpStatus.BAD_REQUEST);
     }
-    return this.commands.dispatch(id, type, { email: user.email, password: body.password });
+    return this.commands.dispatch(id, type, { userId: user.id, email: user.email, password: body.password });
   }
 
   /** GET /commands/:ackId → { state }. */

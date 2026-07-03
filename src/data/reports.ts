@@ -1,11 +1,12 @@
 import { API_URL } from "../config/env";
 import { ApiError } from "./api";
+import { authHeader } from "./authHeader";
 import type { KmReport, RoutePoint, StatsReport } from "../types/reports";
 
 async function getJson<T>(path: string): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { headers: { Accept: "application/json" } });
+    res = await fetch(`${API_URL}${path}`, { headers: { Accept: "application/json", ...(await authHeader()) } });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");
   }

@@ -46,10 +46,15 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 - **[À surveiller] Rate limit signup GoTrue** (« email rate limit exceeded » lors
   d'appels rapprochés). OK en usage réel ; augmenter les limites / configurer SMTP
   si inscription en masse.
-- **[9b] Partage : enforcement multi-tenant.** L'émission/claim de jeton persiste
-  (device_shares). Le filtrage de `/vehicles` par propriétaire+partages n'est PAS
-  encore en place (l'API renvoie tous les devices Traccar, mono-tenant de dev) —
-  à brancher avec le scoping par utilisateur avant prod.
+- **[FAIT] Isolation multi-tenant (confidentialité inter-clients).** Tous les
+  endpoints véhicule sont sous `AuthGuard` + filtrés au périmètre du compte
+  (`AccessService.allowed` = devices possédés + partagés) : `/vehicles` (liste +
+  patch), `/vehicles/:id/{km,stats,route,commands,geofences,share}`,
+  `/geofences/:gid` (patch/delete), `/alarms/{events,anomalies}`. Un compte ne
+  voit/agit QUE sur ses véhicules (vérifié : owner→[imei], autre user→[]).
+- **[À suivre] notification-prefs / push** sont encore rattachés au propriétaire
+  seed (pas au compte courant). Non-confidentiel (pas de donnée véhicule d'autrui),
+  à raccorder au user à l'occasion.
 
 ## Décisions arrêtées (rappel)
 
