@@ -15,7 +15,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 | 8 | Géofences CRUD + règles | ✅ |
 | 9 | Auth (login/register/gate/session) + partage jeton + mdp commandes | ✅ |
 | 10 | i18n (FR défaut + Wolof + EN + AR) + unités + source Baidu | 🚧 10a ✅ / 10b ⬜ |
-| 11 | Externaliser icônes en SVG | ⬜ |
+| 11 | Externaliser icônes véhicules (PNG → /assets) | ✅ |
 
 ## Dette technique BLOQUANTE avant mise en production
 
@@ -90,5 +90,7 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 - ✅ Icône par défaut alignée sur le `type` (`src/icons/vehicleIcons.ts`).
 - ✅ `SubUsersSheet` absent (déjà retiré dans la maquette de référence).
 - ✅ Seuils de fraîcheur externalisés (`FRESHNESS` dans les tokens).
-- ⬜ Externaliser les icônes véhicules en SVG (étape 11).
-- ⬜ Km/Stats : séparer réellement (étape 7).
+- ✅ Icônes véhicules externalisées hors du bundle JS → `assets/vehicles/*.png`
+  (12 : car/suv/van/pickup/truck/bus/moto/taxi/ambulance/sport + 2 racing client).
+  ⬜ Vectorisation SVG restante (source raster PNG → redraw design, non bloquant).
+- ✅ Km/Stats séparés (étape 7).
