@@ -2,6 +2,47 @@
 
 Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build vert de N.
 
+---
+
+## 📌 État du projet — au 2026-07-04
+
+### ✅ Livré et fonctionnel (committé, build vert, smoke réel)
+- **Toutes les étapes §17 (0→11)** : design system, /ui, infra, carte+liste, détail
+  +commandes (ACK), persistance, alarmes/anomalies, km/stats/trajet, géofences,
+  auth (login/register/gate/session), partage jeton, i18n (FR/EN + wo/ar fallback),
+  unités, icônes SVG externalisées.
+- **Isolation multi-tenant** sur tous les endpoints (REST + WebSocket), vérifiée live.
+- **WebSocket temps réel** (Socket.io relayé depuis Traccar) — remplace le polling,
+  fallback polling en repli, **+ refresh périodique du `allowed`** (60 s + event).
+  Testé bout-en-bout GT06→Traccar(VPS)→WS→client.
+- **Sélecteur de langue en liste** (bottom sheet radio, RTL arabe).
+- **Ajout / suppression de véhicule** : enrôlement (POST /vehicles) + suppression
+  **protégée par mot de passe compte** (vérif serveur). Boutons Carte/Liste câblés.
+- **Déploiement API** : Dockerfile + infra/docker-compose.yml (Traccar+API réseau
+  interne) + docs/DEPLOY.md. Mobile `API_URL` via `EXPO_PUBLIC_API_URL` (défaut VPS)
+  + cleartext HTTP autorisé.
+- **Tenant démo** isolé (`demo`/`KelentaneDemo1`, 3 véhicules) + seed script + DEMO.md.
+
+### 🚧 En cours (code écrit, PAS encore committé/testé au moment de ce récap)
+- **notification-prefs & push tokens → compte réel** : `NotificationsService` +
+  controller re-câblés sur `userId` (JWT) au lieu du seed owner ; `AuthGuard` ajouté ;
+  mobile envoie le Bearer sur prefs-patch + push-register. → à builder/smoker/committer.
+- **Préparation push réel** : `PushService` (Expo Push API, respecte prefs armed/type),
+  gardé par `PUSH_ENABLED=false` (aucun envoi tant que non activé) + endpoint
+  `POST /push/test`. Vars `PUSH_ENABLED` / `EXPO_ACCESS_TOKEN` ajoutées aux .env.example.
+  → à builder/smoker/committer + docs/PUSH.md à finaliser (liste credentials FCM/APNs).
+
+### ▶️ Prochaines priorités
+1. **Finaliser notif-prefs + push prep** : build vert (nest build, tsc, export),
+   smoke (prefs isolées par user, /push/test → skipped car désactivé), commit + docs/PUSH.md.
+2. **Activer push** une fois credentials fournis (FCM V1 service account + APNs .p8
+   dans EAS ; passer `PUSH_ENABLED=true`) + **moteur d'alarmes** qui appelle `sendToUser`.
+3. **HTTPS + domaine** pour l'API (reverse proxy) avant prod réelle ; retirer cleartext.
+4. **Traductions wo/ar** par un locuteur natif (actuellement fallback FR).
+5. **Baidu** (module natif RN) si couverture Google insuffisante.
+
+---
+
 | # | Étape | État |
 |---|-------|------|
 | 0 | Scaffold Expo + design system (tokens, typos, thème) | ✅ |
