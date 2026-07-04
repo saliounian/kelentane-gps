@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
 import { DevicesService, type DevicePatch } from "../supabase/devices.service";
 import { AccessService } from "../supabase/access.service";
-import type { TraccarPosition } from "../traccar/traccar.types";
+import type { TraccarDevice, TraccarPosition } from "../traccar/traccar.types";
 import type { VehicleVM } from "./vehicle.vm";
 import { mergeRow, toVM } from "./vehicle.mapper";
 
@@ -35,5 +35,41 @@ export class VehiclesService {
     const row = await this.devices.upsertByImei(d.uniqueId, d.id, patch);
     const pos = positions.find((p) => p.deviceId === id);
     return mergeRow(toVM(d, pos, new Date()), row ?? undefined);
+  }
+
+  /** Enrôle un boîtier au nom du client : crée le device Traccar + la ligne app. */
+  async enroll(userId: string, imei: string, name?: string): Promise<VehicleVM> {
+    if (!/^\d{10,17}$/.test(imei)) throw new BadRequestException("IMEI invalide");
+    if (await this.devices.existsByImei(imei)) throw new ConflictException("Ce boîtier est déjà enregistré");
+
+    const label = name?.trim() || `Boîtier ${imei.slice(-4)}`;
+    let traccarId: number;
+    try {
+      const dev = await this.traccar.createDevice(label, imei);
+      traccarId = dev.id;
+    } catch {
+      throw new ConflictException("IMEI déjà présent sur le cœur GPS ou injoignable");
+    }
+    const row = await this.devices.insertOwned(userId, imei, traccarId, { name: label });
+    const stub: TraccarDevice = { id: traccarId, name: label, uniqueId: imei, status: "offline", lastUpdate: null };
+    return mergeRow(toVM(stub, undefined, new Date()), row ?? undefined);
+  }
+
+  /** Supprime un véhicule (propriétaire uniquement) : device Traccar + ligne app. */
+  async remove(id: number, userId: string): Promise<{ deleted: true }> {
+    const { devices } = await this.traccar.getFleet();
+    const d = devices.find((x) => x.id === id);
+    if (!d) throw new NotFoundException("Véhicule introuvable");
+    const rows = await this.devices.getByImeis([d.uniqueId]);
+    const row = rows.get(d.uniqueId);
+    if (!row || row.owner_id !== userId) throw new ForbiddenException("Seul le propriétaire peut supprimer");
+
+    await this.devices.deleteByImei(d.uniqueId);
+    try {
+      await this.traccar.deleteDevice(id);
+    } catch {
+      /* déjà absent côté Traccar : app nettoyée quand même */
+    }
+    return { deleted: true };
   }
 }

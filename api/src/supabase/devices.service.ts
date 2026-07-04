@@ -76,4 +76,34 @@ export class DevicesService {
     }
     return data as DeviceRow;
   }
+
+  /** Existe déjà (n'importe quel tenant) ? */
+  async existsByImei(imei: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const { data } = await this.supa.client.from("devices").select("id").eq("imei", imei).maybeSingle();
+    return !!data;
+  }
+
+  /** Enrôle un nouveau device au nom du client (owner = userId). */
+  async insertOwned(ownerId: string, imei: string, traccarId: number, patch: DevicePatch): Promise<DeviceRow | null> {
+    if (!this.supa.client) return null;
+    const { data, error } = await this.supa.client
+      .from("devices")
+      .insert({ owner_id: ownerId, imei, traccar_id: traccarId, ...patch })
+      .select("*")
+      .single();
+    if (error) {
+      this.log.error(`Insert device ${imei}: ${error.message}`);
+      throw error;
+    }
+    return data as DeviceRow;
+  }
+
+  /** Supprime le device (cascade shares/geofences via FK). Retourne traccar_id. */
+  async deleteByImei(imei: string): Promise<number | null> {
+    if (!this.supa.client) return null;
+    const { data } = await this.supa.client.from("devices").select("traccar_id").eq("imei", imei).maybeSingle();
+    await this.supa.client.from("devices").delete().eq("imei", imei);
+    return (data?.traccar_id as number | null) ?? null;
+  }
 }

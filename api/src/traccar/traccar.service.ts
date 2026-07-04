@@ -70,6 +70,14 @@ export class TraccarService {
     );
   }
 
+  // ---- Devices (enrôlement / suppression) ----
+  createDevice(name: string, uniqueId: string): Promise<{ id: number; uniqueId: string }> {
+    return this.post<{ id: number; uniqueId: string }>("/api/devices", { name, uniqueId });
+  }
+  deleteDevice(id: number): Promise<void> {
+    return this.del(`/api/devices/${id}`);
+  }
+
   // ---- Géofences (Traccar geofences + permissions device↔geofence) ----
   createGeofence(name: string, areaWkt: string): Promise<{ id: number }> {
     return this.post<{ id: number }>("/api/geofences", { name, area: areaWkt });

@@ -41,6 +41,36 @@ export interface VehiclePatch {
   phone?: string;
 }
 
+/** POST /vehicles — enrôle un boîtier (IMEI). */
+export async function enrollVehicle(imei: string, name?: string): Promise<VehicleVM> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/vehicles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ imei, name }),
+    });
+  } catch (e) {
+    throw new ApiError((e as Error).message || "Réseau indisponible");
+  }
+  if (res.status === 409) throw new ApiError("Ce boîtier est déjà enregistré", 409);
+  if (res.status === 400) throw new ApiError("IMEI invalide", 400);
+  if (!res.ok) throw new ApiError(`Erreur ${res.status}`, res.status);
+  return (await res.json()) as VehicleVM;
+}
+
+/** DELETE /vehicles/:id — retire un véhicule (propriétaire). */
+export async function deleteVehicle(id: number): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/vehicles/${id}`, { method: "DELETE", headers: { Accept: "application/json", ...(await authHeader()) } });
+  } catch (e) {
+    throw new ApiError((e as Error).message || "Réseau indisponible");
+  }
+  if (res.status === 403) throw new ApiError("Seul le propriétaire peut supprimer", 403);
+  if (!res.ok) throw new ApiError(`Erreur ${res.status}`, res.status);
+}
+
 /** PATCH /vehicles/:id — persiste les champs métier (base app). */
 export async function patchVehicle(id: number, patch: VehiclePatch): Promise<VehicleVM> {
   let res: Response;

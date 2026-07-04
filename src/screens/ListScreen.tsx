@@ -3,17 +3,19 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Battery, Plus, Search } from "lucide-react-native";
-import { ACCENT, hexA, LIME_ON } from "../theme/tokens";
+import { AlertTriangle, Battery, Hash, Plus, Search, Trash2 } from "lucide-react-native";
+import { ACCENT, ALERT, hexA, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
+import { deleteVehicle, enrollVehicle } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
-import { Glass, StatusDot } from "../ui";
+import { BottomSheet, Field, Glass, StatusDot } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
+import type { VehicleVM } from "../types/vehicle";
 
 export function ListScreen() {
   const { t, dark } = useTheme();
@@ -21,8 +23,46 @@ export function ListScreen() {
   const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { vehicles, loading, error } = useVehicles();
+  const { vehicles, loading, error, refresh } = useVehicles();
   const [q, setQ] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [imei, setImei] = useState("");
+  const [ename, setEname] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [addErr, setAddErr] = useState<string | null>(null);
+  const [delTarget, setDelTarget] = useState<VehicleVM | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+
+  const enroll = async () => {
+    if (busy) return;
+    setBusy(true);
+    setAddErr(null);
+    try {
+      await enrollVehicle(imei, ename || undefined);
+      setImei("");
+      setEname("");
+      setAddOpen(false);
+      refresh();
+    } catch (e) {
+      setAddErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!delTarget || delBusy) return;
+    setDelBusy(true);
+    try {
+      await deleteVehicle(delTarget.id);
+      setDelTarget(null);
+      refresh();
+    } catch {
+      /* garde le sheet ouvert ; refresh sinon */
+    } finally {
+      setDelBusy(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -46,6 +86,7 @@ export function ListScreen() {
             <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>{tr("list.subtitle")}</Text>
           </View>
           <Pressable
+            onPress={() => { setAddErr(null); setAddOpen(true); }}
             style={{
               width: 42,
               height: 42,
@@ -97,7 +138,7 @@ export function ListScreen() {
             {filtered.map((v) => {
               const Icon = iconForVehicle(v);
               return (
-                <Pressable key={v.id} onPress={() => nav.navigate("Detail", { vehicleId: v.id })}>
+                <Pressable key={v.id} onPress={() => nav.navigate("Detail", { vehicleId: v.id })} onLongPress={() => setDelTarget(v)} delayLongPress={500}>
                   <Glass t={t} dark={dark} radius={18} style={{ padding: 13, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View
                       style={{
@@ -139,6 +180,38 @@ export function ListScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Ajouter un dispositif */}
+      <BottomSheet t={t} visible={addOpen} onClose={() => setAddOpen(false)}>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("list.add")}</Text>
+        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("list.addDesc")}</Text>
+        <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={setImei} />
+        <Field t={t} label={tr("list.nameOpt")} icon={Search} placeholder="Peugeot Expert" value={ename} onChangeText={setEname} />
+        {addErr ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <AlertTriangle size={14} color={ALERT} />
+            <Text style={{ flex: 1, fontSize: 12.5, color: ALERT, fontFamily: font.body.medium }}>{addErr}</Text>
+          </View>
+        ) : null}
+        <Pressable onPress={enroll} disabled={!imei.trim() || busy} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: imei.trim() ? ACCENT : hexA(t.text, 0.12) }}>
+          <Text style={{ fontSize: 15, color: imei.trim() ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{busy ? tr("list.enrolling") : tr("list.enroll")}</Text>
+        </Pressable>
+      </BottomSheet>
+
+      {/* Supprimer un véhicule (appui long) */}
+      <BottomSheet t={t} visible={delTarget !== null} onClose={() => setDelTarget(null)}>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>{tr("list.deleteTitle")}</Text>
+        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>
+          {delTarget?.name} · {tr("list.deleteDesc")}
+        </Text>
+        <Pressable onPress={confirmDelete} disabled={delBusy} style={{ padding: 14, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: ALERT }}>
+          <Trash2 size={17} color="#fff" />
+          <Text style={{ fontSize: 15, color: "#fff", fontFamily: font.body.bold }}>{delBusy ? "…" : tr("list.delete")}</Text>
+        </Pressable>
+        <Pressable onPress={() => setDelTarget(null)} style={{ padding: 12, alignItems: "center", marginTop: 8 }}>
+          <Text style={{ fontSize: 14, color: t.sub, fontFamily: font.body.semibold }}>{tr("list.cancel")}</Text>
+        </Pressable>
+      </BottomSheet>
     </View>
   );
 }

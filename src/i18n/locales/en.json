@@ -28,7 +28,17 @@
     "title": "Vehicles",
     "subtitle": "Kelentane fleet · Dakar",
     "search": "Search a vehicle",
-    "empty": "No vehicle"
+    "empty": "No vehicle",
+    "add": "Add a device",
+    "addDesc": "Enter the IMEI printed on the tracker unit.",
+    "imei": "Tracker IMEI",
+    "nameOpt": "Vehicle name (optional)",
+    "enroll": "Add device",
+    "enrolling": "Adding…",
+    "deleteTitle": "Delete this vehicle?",
+    "deleteDesc": "The tracker will be removed from your account. This cannot be undone.",
+    "delete": "Delete",
+    "cancel": "Cancel"
   },
   "detail": {
     "commands": "Commands",

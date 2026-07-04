@@ -104,7 +104,7 @@ export function MapScreen() {
             {tr("map.summary", { count: vehicles.length, active: activeCount })}
           </Text>
         </View>
-        <GlassButton t={t} icon={Search} />
+        <GlassButton t={t} icon={Search} onPress={() => nav.navigate("Tabs", { screen: "list" })} />
       </View>
 
       {/* contrôles carte */}

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user";
@@ -14,6 +14,11 @@ interface PatchBody {
   phone?: string;
 }
 
+interface EnrollBody {
+  imei?: string;
+  name?: string;
+}
+
 @Controller("vehicles")
 @UseGuards(AuthGuard)
 export class VehiclesController {
@@ -24,6 +29,27 @@ export class VehiclesController {
   async list(@CurrentUser() user: AuthUser): Promise<VehicleVM[]> {
     try {
       return await this.vehicles.list(user.id);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  /** POST /vehicles → enrôle un boîtier (IMEI) au nom du client. */
+  @Post()
+  async enroll(@Body() body: EnrollBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
+    if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
+    try {
+      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  /** DELETE /vehicles/:id → retire un véhicule (propriétaire uniquement). */
+  @Delete(":id")
+  async remove(@Param("id", ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    try {
+      return await this.vehicles.remove(id, user.id);
     } catch (e) {
       throw this.wrap(e);
     }

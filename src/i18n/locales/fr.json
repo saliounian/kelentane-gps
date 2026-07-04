@@ -28,7 +28,17 @@
     "title": "Véhicules",
     "subtitle": "Flotte Kelentane · Dakar",
     "search": "Rechercher un véhicule",
-    "empty": "Aucun véhicule"
+    "empty": "Aucun véhicule",
+    "add": "Ajouter un dispositif",
+    "addDesc": "Renseigne l'IMEI imprimé sur le boîtier du traceur.",
+    "imei": "IMEI du boîtier",
+    "nameOpt": "Nom du véhicule (optionnel)",
+    "enroll": "Ajouter le dispositif",
+    "enrolling": "Ajout…",
+    "deleteTitle": "Supprimer ce véhicule ?",
+    "deleteDesc": "Le boîtier sera retiré de ton compte. Action irréversible.",
+    "delete": "Supprimer",
+    "cancel": "Annuler"
   },
   "detail": {
     "commands": "Commandes",
