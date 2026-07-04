@@ -8,7 +8,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kelentane.gps"
+      "bundleIdentifier": "com.kelentane.gps",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "package": "com.kelentane.gps",
@@ -26,7 +31,13 @@
     "plugins": [
       "expo-font",
       "expo-notifications",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-build-properties",
+        {
+          "android": { "usesCleartextTraffic": true }
+        }
+      ]
     ],
     "extra": {
       "eas": {

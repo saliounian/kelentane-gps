@@ -1,0 +1,55 @@
+# Stack de production Kelentane : Traccar (cœur GPS) + API façade Nest.
+# Même réseau Docker → l'API joint Traccar par nom de service (http://traccar:8082),
+# jamais exposé au mobile. Le mobile ne parle qu'à l'API (:3000).
+#
+# Déploiement : voir docs/DEPLOY.md
+#   docker compose -f infra/docker-compose.yml up -d --build
+
+name: kelentane
+
+services:
+  traccar:
+    image: traccar/traccar:6.5-alpine
+    container_name: kelentane-traccar
+    restart: unless-stopped
+    ports:
+      - "8082:8082" # UI + API REST (admin/config ; le mobile n'y accède pas)
+      - "5023:5023" # protocole GT06 (boîtiers GT06N)
+    volumes:
+      - traccar-data:/opt/traccar/data
+    networks:
+      - kelentane
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: ../api
+    container_name: kelentane-api
+    restart: unless-stopped
+    env_file:
+      - ../api/.env.production
+    environment:
+      # Surcharge : liaison interne au réseau Docker (nom de service).
+      - TRACCAR_URL=http://traccar:8082
+      - PORT=3000
+    ports:
+      - "3000:3000" # API façade (consommée par le mobile)
+    depends_on:
+      - traccar
+    networks:
+      - kelentane
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  traccar-data:
+
+networks:
+  kelentane:

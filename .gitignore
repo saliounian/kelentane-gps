@@ -34,7 +34,10 @@ yarn-error.*
 .env*.local
 .env
 **/.env
+.env.production
+**/.env.production
 !**/.env.example
+!**/.env.production.example
 
 # API (Nest) build + deps
 api/dist/

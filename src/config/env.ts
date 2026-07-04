@@ -7,8 +7,12 @@
  * qu'à l'API façade + à Supabase Auth (handoff §12, §55).
  */
 
-/** Base de l'API façade (à surcharger par plateforme à l'étape 3). */
-export const API_URL = "http://localhost:3000";
+/**
+ * Base de l'API façade. Surchargée au build par `EXPO_PUBLIC_API_URL`
+ * (inliné par Expo). Défaut = VPS de prod. Le mobile ne joint JAMAIS Traccar,
+ * uniquement cette API.
+ */
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://31.97.176.235:3000";
 
 /** Supabase (base app) — Auth + lectures RLS depuis le mobile. */
 export const SUPABASE_URL = "https://bgkbkjbjahgmfxcsrqmk.supabase.co";
