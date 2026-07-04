@@ -19,12 +19,14 @@ Méthode : 1 étape = 1 commit qui build vert. Ne pas passer à N+1 sans build v
 
 ## Dette technique BLOQUANTE avant mise en production
 
-- **[BLOQUANT] Remplacer le polling `/vehicles` par le WebSocket Traccar
-  relayé par la façade.** L'étape 3 livre un polling 10 s (`src/data/useVehicles.ts`).
-  Ce n'est PAS acceptable en prod (latence, charge, coût data au Sénégal).
-  La façade doit ouvrir `GET /api/socket` Traccar (session serveur) et rediffuser
-  positions + événements au mobile (WS/SSE), sans jamais exposer Traccar au client.
-  À faire avant la prod réelle — pas « si le temps le permet ».
+- **[FAIT] WebSocket Traccar relayé (remplace le polling).** La façade ouvre le
+  WS natif Traccar (`/api/socket`, login session), et rediffuse les positions au
+  mobile via **Socket.io** (`RealtimeModule` : `TraccarRealtimeService` +
+  `PositionsGateway`). Isolation multi-tenant appliquée à la source (filtrage par
+  IMEIs du compte, JWT vérifié à la connexion). Mobile : `useVehicles` reçoit
+  `snapshot` + `positions`, avec **polling REST de secours** tant que le WS est
+  déconnecté (reco auto Socket.io). Même port que l'API (pas de nouveau port).
+  Test à faire côté humain : bout-en-bout avec Traccar + `gt06-sim` (voir docs/DEMO.md).
 
 - **[BLOQUANT] Envoi réel des notifications push.** L'étape 6 livre le scaffold
   (enregistrement des jetons `push_tokens`, prefs). L'ENVOI (FCM/APNs via Expo)
