@@ -55,6 +55,8 @@ export function useVehicles(): State {
   const socketRef = useRef<Socket | null>(null);
 
   const load = useCallback(async () => {
+    // re-résolution du périmètre côté WS (ex. après un claim de partage)
+    socketRef.current?.emit("refresh");
     try {
       const data = await fetchVehicles();
       setVehicles(data);
