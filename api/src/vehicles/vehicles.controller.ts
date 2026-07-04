@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
+import { SupabaseService } from "../supabase/supabase.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user";
 import type { DevicePatch } from "../supabase/devices.service";
@@ -22,7 +23,10 @@ interface EnrollBody {
 @Controller("vehicles")
 @UseGuards(AuthGuard)
 export class VehiclesController {
-  constructor(private readonly vehicles: VehiclesService) {}
+  constructor(
+    private readonly vehicles: VehiclesService,
+    private readonly supa: SupabaseService,
+  ) {}
 
   /** GET /vehicles → view-model §6.1, FILTRÉ au périmètre du client. */
   @Get()
@@ -45,9 +49,16 @@ export class VehiclesController {
     }
   }
 
-  /** DELETE /vehicles/:id → retire un véhicule (propriétaire uniquement). */
+  /** DELETE /vehicles/:id → retire un véhicule. Exige le mot de passe DU COMPTE
+   *  (vérifié côté serveur) + propriétaire du véhicule. */
   @Delete(":id")
-  async remove(@Param("id", ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+  async remove(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { password?: string },
+    @CurrentUser() user: AuthUser,
+  ) {
+    const ok = !!body?.password && (await this.supa.verifyPassword(user.email, body.password));
+    if (!ok) throw new UnauthorizedException("Mot de passe incorrect");
     try {
       return await this.vehicles.remove(id, user.id);
     } catch (e) {

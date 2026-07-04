@@ -59,14 +59,19 @@ export async function enrollVehicle(imei: string, name?: string): Promise<Vehicl
   return (await res.json()) as VehicleVM;
 }
 
-/** DELETE /vehicles/:id — retire un véhicule (propriétaire). */
-export async function deleteVehicle(id: number): Promise<void> {
+/** DELETE /vehicles/:id — retire un véhicule (propriétaire + mot de passe compte). */
+export async function deleteVehicle(id: number, password: string): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/vehicles/${id}`, { method: "DELETE", headers: { Accept: "application/json", ...(await authHeader()) } });
+    res = await fetch(`${API_URL}/vehicles/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ password }),
+    });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");
   }
+  if (res.status === 401) throw new ApiError("Mot de passe incorrect", 401);
   if (res.status === 403) throw new ApiError("Seul le propriétaire peut supprimer", 403);
   if (!res.ok) throw new ApiError(`Erreur ${res.status}`, res.status);
 }

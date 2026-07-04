@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { AlertTriangle, Battery, Hash, Plus, Search, Trash2 } from "lucide-react-native";
+import { AlertTriangle, Battery, Hash, KeyRound, Plus, Search, Trash2 } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTranslation } from "react-i18next";
@@ -32,6 +32,10 @@ export function ListScreen() {
   const [addErr, setAddErr] = useState<string | null>(null);
   const [delTarget, setDelTarget] = useState<VehicleVM | null>(null);
   const [delBusy, setDelBusy] = useState(false);
+  const [delPwd, setDelPwd] = useState("");
+  const [delErr, setDelErr] = useState<string | null>(null);
+
+  const openDelete = (v: VehicleVM) => { setDelPwd(""); setDelErr(null); setDelTarget(v); };
 
   const enroll = async () => {
     if (busy) return;
@@ -51,14 +55,16 @@ export function ListScreen() {
   };
 
   const confirmDelete = async () => {
-    if (!delTarget || delBusy) return;
+    if (!delTarget || delBusy || !delPwd.trim()) return;
     setDelBusy(true);
+    setDelErr(null);
     try {
-      await deleteVehicle(delTarget.id);
+      await deleteVehicle(delTarget.id, delPwd);
       setDelTarget(null);
+      setDelPwd("");
       refresh();
-    } catch {
-      /* garde le sheet ouvert ; refresh sinon */
+    } catch (e) {
+      setDelErr((e as Error).message); // 401 = mot de passe incorrect, garde le sheet
     } finally {
       setDelBusy(false);
     }
@@ -138,7 +144,7 @@ export function ListScreen() {
             {filtered.map((v) => {
               const Icon = iconForVehicle(v);
               return (
-                <Pressable key={v.id} onPress={() => nav.navigate("Detail", { vehicleId: v.id })} onLongPress={() => setDelTarget(v)} delayLongPress={500}>
+                <Pressable key={v.id} onPress={() => nav.navigate("Detail", { vehicleId: v.id })} onLongPress={() => openDelete(v)} delayLongPress={500}>
                   <Glass t={t} dark={dark} radius={18} style={{ padding: 13, flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View
                       style={{
@@ -198,15 +204,22 @@ export function ListScreen() {
         </Pressable>
       </BottomSheet>
 
-      {/* Supprimer un véhicule (appui long) */}
+      {/* Supprimer un véhicule (appui long) — protégé par mot de passe compte */}
       <BottomSheet t={t} visible={delTarget !== null} onClose={() => setDelTarget(null)}>
         <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 4 }}>{tr("list.deleteTitle")}</Text>
-        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 16, fontFamily: font.body.regular }}>
+        <Text style={{ fontSize: 13, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>
           {delTarget?.name} · {tr("list.deleteDesc")}
         </Text>
-        <Pressable onPress={confirmDelete} disabled={delBusy} style={{ padding: 14, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: ALERT }}>
-          <Trash2 size={17} color="#fff" />
-          <Text style={{ fontSize: 15, color: "#fff", fontFamily: font.body.bold }}>{delBusy ? "…" : tr("list.delete")}</Text>
+        <Field t={t} label={tr("pwd.accountPwd")} icon={KeyRound} placeholder="••••••" secure value={delPwd} onChangeText={(v) => { setDelPwd(v); setDelErr(null); }} />
+        {delErr ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <AlertTriangle size={14} color={ALERT} />
+            <Text style={{ flex: 1, fontSize: 12.5, color: ALERT, fontFamily: font.body.medium }}>{delErr}</Text>
+          </View>
+        ) : null}
+        <Pressable onPress={confirmDelete} disabled={delBusy || !delPwd.trim()} style={{ padding: 14, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: delPwd.trim() ? ALERT : hexA(t.text, 0.12) }}>
+          <Trash2 size={17} color={delPwd.trim() ? "#fff" : t.sub} />
+          <Text style={{ fontSize: 15, color: delPwd.trim() ? "#fff" : t.sub, fontFamily: font.body.bold }}>{delBusy ? "…" : tr("list.delete")}</Text>
         </Pressable>
         <Pressable onPress={() => setDelTarget(null)} style={{ padding: 12, alignItems: "center", marginTop: 8 }}>
           <Text style={{ fontSize: 14, color: t.sub, fontFamily: font.body.semibold }}>{tr("list.cancel")}</Text>
