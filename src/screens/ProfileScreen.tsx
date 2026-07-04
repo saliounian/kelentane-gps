@@ -9,7 +9,7 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth } from "../state/auth";
 import { usePrefs } from "../state/prefs";
-import { LANG_LABELS, LANGS } from "../i18n";
+import { LANG_LABELS, LANGS, RTL_LANGS, type Lang } from "../i18n";
 import { useVehicles } from "../data/useVehicles";
 import { supabase } from "../data/supabase";
 import { claimShare, createShare } from "../data/shares";
@@ -24,6 +24,7 @@ export function ProfileScreen() {
   const { language, units, mapSource, setLanguage, setUnits, setMapSource } = usePrefs();
   const [me, setMe] = useState<{ name: string | null; phone: string | null; username: string | null }>({ name: null, phone: null, username: null });
   const [notif, setNotif] = useState(true);
+  const [langOpen, setLangOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [byeOpen, setByeOpen] = useState(false);
@@ -68,13 +69,7 @@ export function ProfileScreen() {
         <Card t={t}>
           <Row t={t} icon={Share2} label={tr("profile.share")} onPress={() => setShareOpen(true)} chevron />
           <Row t={t} icon={KeyRound} label={tr("profile.changePwd")} onPress={() => setPwdOpen(true)} chevron />
-          <Row
-            t={t}
-            icon={Globe}
-            label={tr("profile.language")}
-            value={LANG_LABELS[language]}
-            onPress={() => setLanguage(LANGS[(LANGS.indexOf(language) + 1) % LANGS.length])}
-          />
+          <Row t={t} icon={Globe} label={tr("profile.language")} value={LANG_LABELS[language]} onPress={() => setLangOpen(true)} chevron />
           <RowToggle t={t} icon={Bell} label={tr("profile.notifications")} on={notif} set={setNotif} />
           <Row t={t} icon={Gauge} label={tr("profile.units")} value={tr(units === "km" ? "units.kmLabel" : "units.miLabel")} onPress={() => setUnits(units === "km" ? "mi" : "km")} last />
         </Card>
@@ -106,6 +101,8 @@ export function ProfileScreen() {
 
         <Text style={{ textAlign: "center", fontSize: 11, color: t.sub, marginTop: 14, fontFamily: font.body.regular }}>Kelentane GPS · v1.0</Text>
       </ScrollView>
+
+      <LanguagePickerSheet t={t} visible={langOpen} current={language} onSelect={(l) => { setLanguage(l); setLangOpen(false); }} onClose={() => setLangOpen(false)} />
 
       <PasswordChangeSheet t={t} visible={pwdOpen} onClose={() => setPwdOpen(false)} />
 
@@ -145,6 +142,30 @@ function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boole
       <Pressable onPress={save} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
         <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>{tr("profile.update")}</Text>
       </Pressable>
+    </BottomSheet>
+  );
+}
+
+/** Sélecteur de langue en LISTE (radio), pas un toggle. Langue active surlignée. */
+function LanguagePickerSheet({ t, visible, current, onSelect, onClose }: { t: Theme; visible: boolean; current: Lang; onSelect: (l: Lang) => void; onClose: () => void }) {
+  const { t: tr } = useTranslation();
+  return (
+    <BottomSheet t={t} visible={visible} onClose={onClose}>
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 12 }}>{tr("profile.language")}</Text>
+      {LANGS.map((l) => {
+        const on = l === current;
+        const rtl = RTL_LANGS.includes(l);
+        return (
+          <Pressable
+            key={l}
+            onPress={() => onSelect(l)}
+            style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 12, marginBottom: 8, backgroundColor: on ? hexA(ACCENT, 0.12) : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
+          >
+            <Text style={{ flex: 1, fontSize: 15, color: t.text, fontFamily: font.body.semibold, textAlign: rtl ? "right" : "left" }}>{LANG_LABELS[l]}</Text>
+            {on ? <Check size={18} color={ACCENT} /> : null}
+          </Pressable>
+        );
+      })}
     </BottomSheet>
   );
 }
