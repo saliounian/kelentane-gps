@@ -67,6 +67,7 @@ export function toVM(d: TraccarDevice, p: TraccarPosition | undefined, now: Date
     phone: d.phone ?? null,
     iccid: null,
     owner: d.contact ?? null,
+    ownerId: null,
     iconKey: null,
   };
 }
@@ -83,6 +84,7 @@ export function mergeRow(vm: VehicleVM, row: DeviceRow | undefined): VehicleVM {
     phone: row.sim_phone ?? vm.phone,
     iccid: row.iccid ?? vm.iccid,
     owner: row.owner_contact ?? vm.owner,
+    ownerId: row.owner_id ?? vm.ownerId,
     iconKey: row.icon_key ?? vm.iconKey,
     model: row.model ?? vm.model,
   };

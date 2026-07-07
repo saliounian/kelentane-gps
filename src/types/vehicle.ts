@@ -27,5 +27,6 @@ export interface VehicleVM {
   phone: string | null;
   iccid: string | null;
   owner: string | null;
+  ownerId: string | null;
   iconKey: string | null;
 }

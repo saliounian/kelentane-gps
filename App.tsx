@@ -11,6 +11,7 @@ import { PrefsProvider } from "./src/state/prefs";
 import { IconOverridesProvider } from "./src/state/iconOverrides";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { AuthScreen, SessionSplash } from "./src/screens/AuthScreen";
+import { RemindersGate } from "./src/screens/RemindersGate";
 import { registerForPush } from "./src/data/push";
 
 /**
@@ -28,7 +29,16 @@ function Root() {
   return (
     <>
       <StatusBar style={dark ? "light" : "dark"} />
-      {status === "checking" ? <SessionSplash /> : status === "out" ? <AuthScreen /> : <RootNavigator />}
+      {status === "checking" ? (
+        <SessionSplash />
+      ) : status === "out" ? (
+        <AuthScreen />
+      ) : (
+        <>
+          <RootNavigator />
+          <RemindersGate />
+        </>
+      )}
     </>
   );
 }

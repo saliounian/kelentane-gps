@@ -220,5 +220,17 @@
     "phoneRule": "Entre un numéro valide (≥ 6 chiffres).",
     "saving": "Enregistrement…",
     "save": "Enregistrer"
+  },
+  "reminder": {
+    "phoneTitle": "Ajoute ton numéro",
+    "phoneDesc": "Renseigne ton téléphone pour être joignable par Kelentane.",
+    "phoneField": "Numéro de téléphone",
+    "simTitle": "Numéro SIM du GPS",
+    "simDesc": "Renseigne le numéro de la carte SIM de {{name}}.",
+    "simField": "Numéro de la carte SIM",
+    "simRemaining": "{{n}} véhicule(s) sans numéro SIM",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "later": "Plus tard"
   }
 }

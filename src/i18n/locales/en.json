@@ -220,5 +220,17 @@
     "phoneRule": "Enter a valid number (≥ 6 digits).",
     "saving": "Saving…",
     "save": "Save"
+  },
+  "reminder": {
+    "phoneTitle": "Add your number",
+    "phoneDesc": "Set your phone so Kelentane can reach you.",
+    "phoneField": "Phone number",
+    "simTitle": "GPS SIM number",
+    "simDesc": "Enter the SIM card number for {{name}}.",
+    "simField": "SIM card number",
+    "simRemaining": "{{n}} vehicle(s) without a SIM number",
+    "save": "Save",
+    "saving": "Saving…",
+    "later": "Later"
   }
 }

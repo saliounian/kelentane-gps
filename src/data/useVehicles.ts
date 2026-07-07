@@ -32,6 +32,7 @@ function mergePositions(prev: VehicleVM[], batch: VehicleVM[]): VehicleVM[] {
             phone: ex.phone ?? inc.phone,
             iccid: ex.iccid,
             owner: ex.owner ?? inc.owner,
+            ownerId: ex.ownerId ?? inc.ownerId,
             iconKey: ex.iconKey,
             model: ex.model ?? inc.model,
           }
