@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { LayoutRectangle, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, LayoutRectangle, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -128,98 +128,124 @@ export function GeofenceScreen() {
 
   /* ---------------- EDIT ---------------- */
   if (view === "edit") {
+    const pointCount = mode === "polygon" ? points.length : center ? 1 : 0;
+    const hint =
+      mode === "polygon"
+        ? points.length < 3
+          ? tr("geo.needPoints", { n: 3 - points.length })
+          : tr("geo.polyReady", { n: points.length })
+        : center
+          ? tr("geo.circleReady")
+          : tr("geo.hintCircle");
+
     return (
       <View style={{ flex: 1, backgroundColor: t.bg }}>
-        <View style={{ height: 320 }}>
-          <MapView
-            provider={PROVIDER_DEFAULT}
-            style={{ flex: 1 }}
-            initialRegion={region}
-            onPress={(e) => {
-              const c = e.nativeEvent.coordinate;
-              if (mode === "polygon") setPoints((p) => [...p, c]);
-              else setCenter(c);
-            }}
-          >
-            {mode === "polygon" && points.length > 0 ? (
-              <>
-                {points.length >= 3 ? <Polygon coordinates={points} strokeColor={ACCENT} fillColor={hexA(ACCENT, 0.18)} strokeWidth={2.5} /> : null}
-                {points.map((p, i) => (
-                  <Marker key={i} coordinate={p} anchor={{ x: 0.5, y: 0.5 }}>
-                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#fff", borderWidth: 2.5, borderColor: ACCENT }} />
-                  </Marker>
-                ))}
-              </>
-            ) : null}
-            {mode === "circle" && center ? (
-              <Circle center={center} radius={radius} strokeColor={ACCENT} fillColor={hexA(ACCENT, 0.18)} strokeWidth={2.5} />
-            ) : null}
-          </MapView>
-          <View style={{ position: "absolute", top: insets.top + 8, left: 14 }}>
-            <GlassButton t={t} icon={ChevronLeft} size={38} onPress={() => { reset(); setView("list"); }} />
-          </View>
-          <View style={{ position: "absolute", top: insets.top + 8, left: 62, right: 14 }}>
-            <Glass t={t} dark={dark} radius={10} style={{ paddingVertical: 6, paddingHorizontal: 10 }}>
-              <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>
-                {mode === "polygon" ? tr("geo.hintPolygon") : tr("geo.hintCircle")}
-              </Text>
-            </Glass>
-          </View>
+        {/* Carte plein écran — reçoit les taps pour tracer la zone. */}
+        <MapView
+          provider={PROVIDER_DEFAULT}
+          style={{ flex: 1 }}
+          initialRegion={region}
+          onPress={(e) => {
+            const c = e.nativeEvent.coordinate;
+            if (mode === "polygon") setPoints((p) => [...p, c]);
+            else setCenter(c);
+          }}
+        >
+          {mode === "polygon" && points.length > 0 ? (
+            <>
+              {points.length >= 3 ? <Polygon coordinates={points} strokeColor={ACCENT} fillColor={hexA(ACCENT, 0.18)} strokeWidth={2.5} /> : null}
+              {points.map((p, i) => (
+                <Marker key={i} coordinate={p} anchor={{ x: 0.5, y: 0.5 }}>
+                  <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: "#fff", borderWidth: 2.5, borderColor: ACCENT }} />
+                </Marker>
+              ))}
+            </>
+          ) : null}
+          {mode === "circle" && center ? (
+            <Circle center={center} radius={radius} strokeColor={ACCENT} fillColor={hexA(ACCENT, 0.18)} strokeWidth={2.5} />
+          ) : null}
+        </MapView>
+
+        {/* Barre haute : retour + indice de tracé. */}
+        <View style={{ position: "absolute", top: insets.top + 8, left: 14, right: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <GlassButton t={t} icon={ChevronLeft} size={38} onPress={() => { reset(); setView("list"); }} />
+          <Glass t={t} dark={dark} radius={10} style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 12 }}>
+            <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>{hint}</Text>
+          </Glass>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: 14, gap: 12 }}>
-          <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>{tr("geo.newZone")}</Text>
+        {/* Panneau formulaire flottant, séparé de la carte, remonte avec le clavier. */}
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View
+            style={{
+              backgroundColor: t.glassSolid,
+              borderTopLeftRadius: 26,
+              borderTopRightRadius: 26,
+              borderWidth: 1,
+              borderColor: t.border,
+              paddingHorizontal: 16,
+              paddingTop: 14,
+              paddingBottom: Math.max(insets.bottom, 16) + 4,
+            }}
+          >
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }} contentContainerStyle={{ gap: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 18, color: t.text, fontFamily: font.display.extrabold }}>{tr("geo.newZone")}</Text>
+                <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.mono.regular }}>{pointCount > 0 ? tr("geo.placed", { n: pointCount }) : ""}</Text>
+              </View>
 
-          <View style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-            {([["polygon", tr("geo.polygon")], ["circle", tr("geo.circle")]] as const).map(([id, lbl]) => {
-              const on = mode === id;
-              return (
-                <Pressable key={id} onPress={() => { setMode(id); reset(); }} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: on ? ACCENT : "transparent" }}>
-                  <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{lbl}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+              <View style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+                {([["polygon", tr("geo.polygon")], ["circle", tr("geo.circle")]] as const).map(([id, lbl]) => {
+                  const on = mode === id;
+                  return (
+                    <Pressable key={id} onPress={() => { setMode(id); reset(); }} style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center", backgroundColor: on ? ACCENT : "transparent" }}>
+                      <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{lbl}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
 
-          {mode === "circle" ? (
-            <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("geo.radius")}</Text>
-              <Pressable
-                onLayout={(e) => setTrack(e.nativeEvent.layout)}
-                onPress={(e) => {
-                  if (!track) return;
-                  const r = R_MIN + (e.nativeEvent.locationX / track.width) * (R_MAX - R_MIN);
-                  setRadius(Math.round(Math.max(R_MIN, Math.min(R_MAX, r))));
-                }}
-                style={{ flex: 1, height: 24, justifyContent: "center" }}
-              >
-                <View style={{ height: 4, borderRadius: 2, backgroundColor: hexA(t.text, 0.15) }}>
-                  <View style={{ width: `${((radius - R_MIN) / (R_MAX - R_MIN)) * 100}%`, height: 4, borderRadius: 2, backgroundColor: ACCENT }} />
+              {mode === "circle" ? (
+                <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("geo.radius")}</Text>
+                  <Pressable
+                    onLayout={(e) => setTrack(e.nativeEvent.layout)}
+                    onPress={(e) => {
+                      if (!track) return;
+                      const r = R_MIN + (e.nativeEvent.locationX / track.width) * (R_MAX - R_MIN);
+                      setRadius(Math.round(Math.max(R_MIN, Math.min(R_MAX, r))));
+                    }}
+                    style={{ flex: 1, height: 24, justifyContent: "center" }}
+                  >
+                    <View style={{ height: 4, borderRadius: 2, backgroundColor: hexA(t.text, 0.15) }}>
+                      <View style={{ width: `${((radius - R_MIN) / (R_MAX - R_MIN)) * 100}%`, height: 4, borderRadius: 2, backgroundColor: ACCENT }} />
+                    </View>
+                  </Pressable>
+                  <Text style={{ fontSize: 13, color: t.text, fontFamily: font.mono.semibold }}>{radius} m</Text>
+                </Glass>
+              ) : null}
+
+              <View>
+                <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6, paddingLeft: 2, fontFamily: font.body.semibold }}>{tr("geo.zoneName")}</Text>
+                <View style={{ height: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+                  <Fence size={18} color={t.sub} />
+                  <TextInput value={name} onChangeText={setName} placeholder="Zone domicile" placeholderTextColor={t.sub} style={{ flex: 1, color: t.text, fontSize: 15, fontFamily: font.body.regular }} />
                 </View>
-              </Pressable>
-              <Text style={{ fontSize: 13, color: t.text, fontFamily: font.mono.semibold }}>{radius} m</Text>
-            </Glass>
-          ) : null}
+              </View>
+            </ScrollView>
 
-          <View>
-            <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6, paddingLeft: 2, fontFamily: font.body.semibold }}>{tr("geo.zoneName")}</Text>
-            <View style={{ height: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-              <Fence size={18} color={t.sub} />
-              <TextInput value={name} onChangeText={setName} placeholder="Zone domicile" placeholderTextColor={t.sub} style={{ flex: 1, color: t.text, fontSize: 15, fontFamily: font.body.regular }} />
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+              <Pressable onPress={reset} style={{ flex: 1, height: 46, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+                <RotateCcw size={16} color={t.text} />
+                <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("geo.clear")}</Text>
+              </Pressable>
+              <Pressable onPress={save} disabled={!canSave || saving} style={{ flex: 2, height: 46, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: canSave ? ACCENT : hexA(t.text, 0.12) }}>
+                <Check size={17} color={canSave ? LIME_ON : t.sub} />
+                <Text style={{ fontSize: 14, color: canSave ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{saving ? tr("geo.saving") : tr("geo.save")}</Text>
+              </Pressable>
             </View>
           </View>
-
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Pressable onPress={reset} style={{ flex: 1, height: 44, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-              <RotateCcw size={16} color={t.text} />
-              <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("geo.clear")}</Text>
-            </Pressable>
-            <Pressable onPress={save} disabled={!canSave || saving} style={{ flex: 2, height: 44, borderRadius: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: canSave ? ACCENT : hexA(t.text, 0.12) }}>
-              <Check size={17} color={canSave ? LIME_ON : t.sub} />
-              <Text style={{ fontSize: 14, color: canSave ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{saving ? tr("geo.saving") : tr("geo.save")}</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     );
   }

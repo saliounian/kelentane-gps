@@ -142,7 +142,11 @@
     "save": "Save zone",
     "saving": "Saving…",
     "hintPolygon": "Tap the map to place vertices (≥ 3)",
-    "hintCircle": "Tap the map to place the center"
+    "hintCircle": "Tap the map to place the center",
+    "needPoints": "{{n}} more point(s) to validate the zone",
+    "polyReady": "{{n}} vertices · valid zone",
+    "circleReady": "Center placed · adjust the radius",
+    "placed": "{{n}} placed"
   },
   "auth": {
     "tagline": "GPS & fleet telematics",

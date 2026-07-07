@@ -142,7 +142,11 @@
     "save": "Enregistrer la zone",
     "saving": "Enregistrement…",
     "hintPolygon": "Touche la carte pour poser les sommets (≥ 3)",
-    "hintCircle": "Touche la carte pour placer le centre"
+    "hintCircle": "Touche la carte pour placer le centre",
+    "needPoints": "Encore {{n}} point(s) pour valider la zone",
+    "polyReady": "{{n}} sommets · zone valide",
+    "circleReady": "Centre placé · ajuste le rayon",
+    "placed": "{{n}} placé(s)"
   },
   "auth": {
     "tagline": "Suivi GPS & télématique",
