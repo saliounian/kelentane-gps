@@ -18,6 +18,15 @@
     "vehicleNotFound": "Vehicle not found."
   },
   "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
+  "cal": {
+    "pickRange": "Pick a range",
+    "from": "From",
+    "to": "to",
+    "apply": "Apply",
+    "clear": "Clear",
+    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "weekdays": ["M", "T", "W", "T", "F", "S", "S"]
+  },
   "map": {
     "summary": "{{count}} vehicles · {{active}} active",
     "follow": "Follow",

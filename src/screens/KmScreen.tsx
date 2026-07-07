@@ -4,16 +4,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
-import { ACCENT, hexA, LIME_ON } from "../theme/tokens";
+import { ACCENT, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { fetchKm, type Range } from "../data/reports";
-import { BarChart, BottomSheet, Glass, GlassButton } from "../ui";
+import { BarChart, DateRangeSheet, Glass, GlassButton } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { KmReport } from "../types/reports";
 
-const DAY_MS = 86400000;
-const PRESETS = [14, 60, 90];
+const fmtShort = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
 export function KmScreen() {
   const { t, dark } = useTheme();
@@ -22,7 +21,8 @@ export function KmScreen() {
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "Km">>();
   const [mode, setMode] = useState<Range>("7d");
-  const [customDays, setCustomDays] = useState(14);
+  const [customFrom, setCustomFrom] = useState<Date | null>(null);
+  const [customTo, setCustomTo] = useState<Date | null>(null);
   const [perso, setPerso] = useState(false);
   const [data, setData] = useState<KmReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,11 +34,9 @@ export function KmScreen() {
         let from: string | undefined;
         let to: string | undefined;
         if (mode === "custom") {
-          const end = new Date();
-          const start = new Date(end.getTime() - (customDays - 1) * DAY_MS);
-          start.setHours(0, 0, 0, 0);
-          from = start.toISOString();
-          to = end.toISOString();
+          if (!customFrom || !customTo) return; // plage pas encore choisie
+          from = customFrom.toISOString();
+          to = customTo.toISOString();
         }
         const r = await fetchKm(params.vehicleId, mode, from, to);
         if (alive) {
@@ -52,12 +50,13 @@ export function KmScreen() {
     return () => {
       alive = false;
     };
-  }, [params.vehicleId, mode, customDays]);
+  }, [params.vehicleId, mode, customFrom, customTo]);
 
+  const customLabel = mode === "custom" && customFrom && customTo ? `${fmtShort(customFrom)}–${fmtShort(customTo)}` : tr("km.custom");
   const chips: { id: Range; label: string }[] = [
     { id: "7d", label: tr("km.d7") },
     { id: "30d", label: tr("km.d30") },
-    { id: "custom", label: mode === "custom" ? `${customDays} j` : tr("km.custom") },
+    { id: "custom", label: customLabel },
   ];
 
   return (
@@ -124,27 +123,19 @@ export function KmScreen() {
         )}
       </ScrollView>
 
-      <BottomSheet t={t} visible={perso} onClose={() => setPerso(false)}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, paddingHorizontal: 4, marginBottom: 4 }}>
-          {tr("km.customTitle")}
-        </Text>
-        <Text style={{ fontSize: 12, color: t.sub, paddingHorizontal: 4, marginBottom: 12, fontFamily: font.body.regular }}>
-          {tr("km.customDesc")}
-        </Text>
-        {PRESETS.map((d) => (
-          <Pressable
-            key={d}
-            onPress={() => {
-              setCustomDays(d);
-              setMode("custom");
-              setPerso(false);
-            }}
-            style={{ paddingVertical: 13, paddingHorizontal: 12, borderRadius: 12, marginBottom: 8, backgroundColor: hexA(ACCENT, 0.1) }}
-          >
-            <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{tr("km.lastNDays", { n: d })}</Text>
-          </Pressable>
-        ))}
-      </BottomSheet>
+      <DateRangeSheet
+        t={t}
+        visible={perso}
+        initialFrom={customFrom}
+        initialTo={customTo}
+        onApply={(from, to) => {
+          setCustomFrom(from);
+          setCustomTo(to);
+          setMode("custom");
+          setPerso(false);
+        }}
+        onClose={() => setPerso(false)}
+      />
     </View>
   );
 }

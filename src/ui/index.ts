@@ -13,6 +13,7 @@ export { GlassButton } from "./GlassButton";
 export { TabBar } from "./TabBar";
 export { CommandToast } from "./CommandToast";
 export { BottomSheet } from "./BottomSheet";
+export { DateRangeSheet } from "./DateRangeSheet";
 export { PasswordSheet } from "./PasswordSheet";
 export { AlarmSettingsSheet } from "./AlarmSettingsSheet";
 export { BarChart } from "./BarChart";

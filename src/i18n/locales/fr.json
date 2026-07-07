@@ -18,6 +18,15 @@
     "vehicleNotFound": "Véhicule introuvable."
   },
   "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
+  "cal": {
+    "pickRange": "Choisir une plage",
+    "from": "Du",
+    "to": "au",
+    "apply": "Appliquer",
+    "clear": "Effacer",
+    "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
+    "weekdays": ["L", "M", "M", "J", "V", "S", "D"]
+  },
   "map": {
     "summary": "{{count}} véhicules · {{active}} actifs",
     "follow": "Suivi",
