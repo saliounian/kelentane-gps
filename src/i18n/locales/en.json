@@ -169,6 +169,7 @@
     "haveAccount": "I already have an account — Sign in",
     "fullName": "Full name",
     "phone": "Phone number",
+    "phoneOpt": "Phone number (optional)",
     "username": "Username",
     "confirmPassword": "Confirm password",
     "usernameHint": "Auto-suggested (first name + first 5 phone digits) — editable.",
@@ -212,6 +213,12 @@
     "copied": "Copied",
     "addShared": "Add a shared device",
     "add": "Add",
-    "deviceAdded": "Device added. It will appear in your list."
+    "deviceAdded": "Device added. It will appear in your list.",
+    "phoneMissing": "Add it",
+    "phoneEdit": "Phone number",
+    "phoneEditDesc": "Used by Kelentane to reach you. Editable anytime.",
+    "phoneRule": "Enter a valid number (≥ 6 digits).",
+    "saving": "Saving…",
+    "save": "Save"
   }
 }

@@ -124,8 +124,8 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
     return () => clearTimeout(id);
   }, [username, checkUsername]);
 
-  const phoneDigits = phone.replace(/\D/g, "");
-  const canSubmit = fullName.trim().length > 1 && phoneDigits.length >= 9 && username.trim().length > 0 && !taken && pwd.length >= 4 && pwd === pwd2;
+  // Téléphone NON bloquant (§4) : l'inscription se finalise sans numéro.
+  const canSubmit = fullName.trim().length > 1 && username.trim().length > 0 && !taken && pwd.length >= 4 && pwd === pwd2;
 
   const submit = async () => {
     if (taken) return setErr(tr("auth.usernameTakenLong"));
@@ -144,7 +144,7 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
   return (
     <>
       <Field t={t} label={tr("auth.fullName")} icon={UserRound} placeholder="Aliou Diop" value={fullName} onChangeText={(v) => { setFullName(v); setErr(null); }} />
-      <Field t={t} label={tr("auth.phone")} icon={Phone} placeholder="77 123 45 65" keyboardType="phone-pad" value={phone} onChangeText={(v) => { setPhone(v); setErr(null); }} />
+      <Field t={t} label={tr("auth.phoneOpt")} icon={Phone} placeholder="77 123 45 65" keyboardType="phone-pad" value={phone} onChangeText={(v) => { setPhone(v); setErr(null); }} />
       <Field t={t} label={tr("auth.username")} icon={Hash} placeholder="Aliou77123" value={username} onChangeText={(v) => { setUsername(v); setTouched(true); setErr(null); }} />
       {taken ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 12, paddingLeft: 2 }}>

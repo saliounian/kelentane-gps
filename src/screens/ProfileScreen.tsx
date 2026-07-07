@@ -26,6 +26,7 @@ export function ProfileScreen() {
   const [notif, setNotif] = useState(true);
   const [langOpen, setLangOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [byeOpen, setByeOpen] = useState(false);
 
@@ -61,7 +62,7 @@ export function ProfileScreen() {
         <SectionLabel t={t}>{tr("profile.account")}</SectionLabel>
         <Card t={t}>
           <Row t={t} icon={UserRound} label={tr("profile.name")} value={me.name ?? "—"} />
-          <Row t={t} icon={Phone} label={tr("profile.phone")} value={me.phone ?? "—"} />
+          <Row t={t} icon={Phone} label={tr("profile.phone")} value={me.phone ?? tr("profile.phoneMissing")} onPress={() => setPhoneOpen(true)} chevron />
           <Row t={t} icon={Hash} label={tr("profile.identifier")} value={me.username ?? "—"} last />
         </Card>
 
@@ -106,6 +107,15 @@ export function ProfileScreen() {
 
       <PasswordChangeSheet t={t} visible={pwdOpen} onClose={() => setPwdOpen(false)} />
 
+      <PhoneEditSheet
+        t={t}
+        visible={phoneOpen}
+        uid={session?.user?.id ?? null}
+        current={me.phone}
+        onSaved={(p) => setMe((m) => ({ ...m, phone: p }))}
+        onClose={() => setPhoneOpen(false)}
+      />
+
       <ShareSheet t={t} visible={shareOpen} onClose={() => setShareOpen(false)} />
 
       <BottomSheet t={t} visible={byeOpen} onClose={() => setByeOpen(false)}>
@@ -141,6 +151,44 @@ function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boole
       {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
       <Pressable onPress={save} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
         <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>{tr("profile.update")}</Text>
+      </Pressable>
+    </BottomSheet>
+  );
+}
+
+/** Édition du numéro de téléphone du compte (persisté sur `clients.phone`). */
+function PhoneEditSheet({ t, visible, uid, current, onSaved, onClose }: { t: Theme; visible: boolean; uid: string | null; current: string | null; onSaved: (phone: string) => void; onClose: () => void }) {
+  const { t: tr } = useTranslation();
+  const [phone, setPhone] = useState(current ?? "");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setPhone(current ?? "");
+      setMsg(null);
+    }
+  }, [visible, current]);
+
+  const save = async () => {
+    const val = phone.trim();
+    if (!uid || val.length < 6) return setMsg(tr("profile.phoneRule"));
+    setSaving(true);
+    const { error } = await supabase.from("clients").update({ phone: val }).eq("id", uid);
+    setSaving(false);
+    if (error) return setMsg(error.message);
+    onSaved(val);
+    onClose();
+  };
+
+  return (
+    <BottomSheet t={t} visible={visible} onClose={onClose}>
+      <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("profile.phoneEdit")}</Text>
+      <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("profile.phoneEditDesc")}</Text>
+      <Field t={t} label={tr("profile.phone")} icon={Phone} placeholder="77 123 45 65" keyboardType="phone-pad" value={phone} onChangeText={(v) => { setPhone(v); setMsg(null); }} />
+      {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
+      <Pressable onPress={save} disabled={saving || phone.trim().length < 6} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: phone.trim().length >= 6 ? ACCENT : hexA(t.text, 0.12) }}>
+        <Text style={{ fontSize: 15, color: phone.trim().length >= 6 ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{saving ? tr("profile.saving") : tr("profile.save")}</Text>
       </Pressable>
     </BottomSheet>
   );
