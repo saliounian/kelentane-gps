@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { hexA, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -30,7 +30,7 @@ export function AlarmSettingsSheet({ t, visible, enabled, onToggle, onClose }: P
       <Text style={{ fontSize: 12, color: t.sub, paddingHorizontal: 4, paddingBottom: 6, fontFamily: font.body.regular }}>
         {tr("alarms.settingsDesc")}
       </Text>
-      <ScrollView style={{ maxHeight: 460 }}>
+      <View>
         {GROUPS.map((g) => (
           <View key={g.cat}>
             <Text style={{ fontSize: 12, color: t.sub, paddingTop: 10, paddingHorizontal: 4, paddingBottom: 4, fontFamily: font.body.bold }}>
@@ -51,7 +51,7 @@ export function AlarmSettingsSheet({ t, visible, enabled, onToggle, onClose }: P
             })}
           </View>
         ))}
-      </ScrollView>
+      </View>
     </BottomSheet>
   );
 }

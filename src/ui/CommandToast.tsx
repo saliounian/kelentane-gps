@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AlertTriangle, Check, RotateCcw, WifiOff, X } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -19,6 +20,7 @@ type Props = { t: Theme; cmd: Command; onClose: () => void };
 
 /** Toast de retour de commande. Maquette : `CommandToast`. */
 export function CommandToast({ t, cmd, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const meta = META[cmd.state];
   const Icon = meta.icon;
   const spin = useRef(new Animated.Value(0)).current;
@@ -48,7 +50,7 @@ export function CommandToast({ t, cmd, onClose }: Props) {
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
 
   return (
-    <View style={{ position: "absolute", left: 0, right: 0, bottom: 96, alignItems: "center" }}>
+    <View style={{ position: "absolute", left: 0, right: 0, top: insets.top + 8, alignItems: "center", zIndex: 1000 }}>
       <View
         style={{
           flexDirection: "row",
