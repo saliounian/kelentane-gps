@@ -17,6 +17,7 @@ export interface DeviceRow {
   sim_phone: string | null;
   iccid: string | null;
   owner_contact: string | null;
+  device_password: string | null; // hash bcrypt — SECRET serveur, jamais exposé au VM
 }
 
 /** Patch autorisé depuis le mobile (champs éditables). */
@@ -82,6 +83,40 @@ export class DevicesService {
     if (!this.supa.client) return false;
     const { data } = await this.supa.client.from("devices").select("id").eq("imei", imei).maybeSingle();
     return !!data;
+  }
+
+  /**
+   * Transfère la propriété d'un device APRÈS vérification du mot de passe device
+   * (comparaison bcrypt en base via RPC SECURITY DEFINER). Le hash ne quitte
+   * jamais Postgres. Retourne true si transféré, false si mot de passe incorrect.
+   */
+  async transferByImei(imei: string, devicePassword: string, newOwnerId: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const { data, error } = await this.supa.client.rpc("device_transfer", {
+      p_imei: imei,
+      p_password: devicePassword,
+      p_new_owner: newOwnerId,
+    });
+    if (error) {
+      this.log.error(`device_transfer ${imei}: ${error.message}`);
+      throw error;
+    }
+    return data === true;
+  }
+
+  /** Change le mot de passe device (propriétaire uniquement, vérifié en base). */
+  async setPassword(traccarId: number, ownerId: string, newPassword: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const { data, error } = await this.supa.client.rpc("device_set_password", {
+      p_traccar_id: traccarId,
+      p_owner: ownerId,
+      p_new: newPassword,
+    });
+    if (error) {
+      this.log.error(`device_set_password ${traccarId}: ${error.message}`);
+      throw error;
+    }
+    return data === true;
   }
 
   /** Enrôle un nouveau device au nom du client (owner = userId). */

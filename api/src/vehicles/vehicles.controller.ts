@@ -18,6 +18,7 @@ interface PatchBody {
 interface EnrollBody {
   imei?: string;
   name?: string;
+  devicePassword?: string; // requis seulement pour transférer un IMEI déjà enregistré
 }
 
 @Controller("vehicles")
@@ -43,10 +44,30 @@ export class VehiclesController {
   async enroll(@Body() body: EnrollBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
     try {
-      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name);
+      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name, body.devicePassword);
     } catch (e) {
       throw this.wrap(e);
     }
+  }
+
+  /** PATCH /vehicles/:id/device-password → change le mot de passe DU DISPOSITIF
+   *  (propriétaire uniquement). Distinct du mot de passe du compte. */
+  @Patch(":id/device-password")
+  async setDevicePassword(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { newPassword?: string },
+    @CurrentUser() user: AuthUser,
+  ): Promise<{ ok: true }> {
+    const pw = body?.newPassword?.trim();
+    if (!pw || pw.length < 4) throw new HttpException("Mot de passe du dispositif trop court (min. 4).", HttpStatus.BAD_REQUEST);
+    let ok: boolean;
+    try {
+      ok = await this.vehicles.setDevicePassword(id, user.id, pw);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+    if (!ok) throw new HttpException("Seul le propriétaire peut changer le mot de passe du dispositif.", HttpStatus.FORBIDDEN);
+    return { ok: true };
   }
 
   /** DELETE /vehicles/:id → retire un véhicule. Exige le mot de passe DU COMPTE

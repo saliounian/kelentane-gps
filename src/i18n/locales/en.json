@@ -47,7 +47,11 @@
     "deleteTitle": "Delete this vehicle?",
     "deleteDesc": "The tracker will be removed from your account. This cannot be undone.",
     "delete": "Delete",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "transferTitle": "Transfer this device",
+    "transferDesc": "This IMEI is already linked to an account. Enter the device password to transfer it to yours.",
+    "devicePwd": "Device password",
+    "transfer": "Transfer device"
   },
   "detail": {
     "commands": "Commands",
@@ -82,7 +86,15 @@
     "ownerContact": "User contact",
     "cutTitle": "Cut the engine",
     "restartTitle": "Restart the engine",
-    "cutNote": "Make sure the vehicle is slowing down or stopped before cutting the engine."
+    "cutNote": "Make sure the vehicle is slowing down or stopped before cutting the engine.",
+    "devicePwd": "Device password",
+    "devicePwdTitle": "Device password",
+    "devicePwdDesc": "Used to transfer this tracker to another account. Default is \"123456\" — change it to secure your device.",
+    "newDevicePwd": "New device password",
+    "devicePwdRule": "Password: 4 characters minimum.",
+    "devicePwdOk": "Device password updated.",
+    "devicePwdSave": "Save",
+    "devicePwdSaving": "Saving…"
   },
   "pwd": { "confirmAccount": "Confirm with your account password", "accountPwd": "Account password" },
   "alarms": {

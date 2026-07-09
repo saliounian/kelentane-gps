@@ -41,22 +41,61 @@ export interface VehiclePatch {
   phone?: string;
 }
 
-/** POST /vehicles — enrôle un boîtier (IMEI). */
-export async function enrollVehicle(imei: string, name?: string): Promise<VehicleVM> {
+/** Levée quand l'IMEI existe déjà : l'app doit demander le mot de passe du dispositif. */
+export class TransferRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TransferRequiredError";
+  }
+}
+
+/**
+ * POST /vehicles — enrôle un boîtier (IMEI), ou le TRANSFÈRE si déjà rattaché à un
+ * autre compte (avec `devicePassword`). Sans mot de passe sur un IMEI existant →
+ * `TransferRequiredError` (l'app affiche le champ mot de passe du dispositif).
+ */
+export async function enrollVehicle(imei: string, name?: string, devicePassword?: string): Promise<VehicleVM> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/vehicles`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
-      body: JSON.stringify({ imei, name }),
+      body: JSON.stringify({ imei, name, devicePassword }),
     });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");
   }
+  if (res.ok) return (await res.json()) as VehicleVM;
+
+  const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
+  if (res.status === 409 && body?.code === "transfer_required") {
+    throw new TransferRequiredError(body.message ?? "Mot de passe du dispositif requis");
+  }
+  if (res.status === 403 && body?.code === "bad_device_password") {
+    throw new ApiError("Mot de passe incorrect pour ce dispositif", 403);
+  }
   if (res.status === 409) throw new ApiError("Ce boîtier est déjà enregistré", 409);
-  if (res.status === 400) throw new ApiError("IMEI invalide", 400);
-  if (!res.ok) throw new ApiError(`Erreur ${res.status}`, res.status);
-  return (await res.json()) as VehicleVM;
+  if (res.status === 400) throw new ApiError(body?.message ?? "IMEI invalide", 400);
+  throw new ApiError(body?.message ?? `Erreur ${res.status}`, res.status);
+}
+
+/** PATCH /vehicles/:id/device-password — change le mot de passe DU DISPOSITIF (propriétaire). */
+export async function changeDevicePassword(id: number, newPassword: string): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/vehicles/${id}/device-password`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ newPassword }),
+    });
+  } catch (e) {
+    throw new ApiError((e as Error).message || "Réseau indisponible");
+  }
+  if (res.status === 403) throw new ApiError("Seul le propriétaire peut changer ce mot de passe", 403);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new ApiError(body?.message ?? `Erreur ${res.status}`, res.status);
+  }
 }
 
 /** DELETE /vehicles/:id — retire un véhicule (propriétaire + mot de passe compte). */

@@ -4,14 +4,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AlertTriangle, Battery, Hash, KeyRound, Plus, Search, Trash2 } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
-import { deleteVehicle, enrollVehicle } from "../data/api";
+import { deleteVehicle, enrollVehicle, TransferRequiredError } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { BottomSheet, Field, Glass, StatusDot } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
@@ -30,6 +30,8 @@ export function ListScreen() {
   const [ename, setEname] = useState("");
   const [busy, setBusy] = useState(false);
   const [addErr, setAddErr] = useState<string | null>(null);
+  const [transferMode, setTransferMode] = useState(false); // IMEI déjà enregistré → transfert
+  const [devicePwd, setDevicePwd] = useState("");
   const [delTarget, setDelTarget] = useState<VehicleVM | null>(null);
   const [delBusy, setDelBusy] = useState(false);
   const [delPwd, setDelPwd] = useState("");
@@ -37,18 +39,33 @@ export function ListScreen() {
 
   const openDelete = (v: VehicleVM) => { setDelPwd(""); setDelErr(null); setDelTarget(v); };
 
+  const closeAdd = () => {
+    setAddOpen(false);
+    setTransferMode(false);
+    setDevicePwd("");
+    setAddErr(null);
+  };
+
   const enroll = async () => {
     if (busy) return;
+    if (transferMode && !devicePwd.trim()) return;
     setBusy(true);
     setAddErr(null);
     try {
-      await enrollVehicle(imei, ename || undefined);
+      await enrollVehicle(imei, ename || undefined, transferMode ? devicePwd : undefined);
       setImei("");
       setEname("");
+      setDevicePwd("");
+      setTransferMode(false);
       setAddOpen(false);
       refresh();
     } catch (e) {
-      setAddErr((e as Error).message);
+      if (e instanceof TransferRequiredError) {
+        setTransferMode(true); // révèle le champ mot de passe du dispositif
+        setAddErr(e.message);
+      } else {
+        setAddErr((e as Error).message);
+      }
     } finally {
       setBusy(false);
     }
@@ -188,20 +205,30 @@ export function ListScreen() {
       </ScrollView>
 
       {/* Ajouter un dispositif */}
-      <BottomSheet t={t} visible={addOpen} onClose={() => setAddOpen(false)}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("list.add")}</Text>
-        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("list.addDesc")}</Text>
-        <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={setImei} />
-        <Field t={t} label={tr("list.nameOpt")} icon={Search} placeholder="Peugeot Expert" value={ename} onChangeText={setEname} />
+      <BottomSheet t={t} visible={addOpen} onClose={closeAdd}>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{transferMode ? tr("list.transferTitle") : tr("list.add")}</Text>
+        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{transferMode ? tr("list.transferDesc") : tr("list.addDesc")}</Text>
+        <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={(v) => { setImei(v); if (transferMode) { setTransferMode(false); setDevicePwd(""); } setAddErr(null); }} />
+        {transferMode ? (
+          <Field t={t} label={tr("list.devicePwd")} icon={KeyRound} placeholder="••••••" secure value={devicePwd} onChangeText={(v) => { setDevicePwd(v); setAddErr(null); }} />
+        ) : (
+          <Field t={t} label={tr("list.nameOpt")} icon={Search} placeholder="Peugeot Expert" value={ename} onChangeText={setEname} />
+        )}
         {addErr ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <AlertTriangle size={14} color={ALERT} />
-            <Text style={{ flex: 1, fontSize: 12.5, color: ALERT, fontFamily: font.body.medium }}>{addErr}</Text>
+            <AlertTriangle size={14} color={transferMode ? PARKED : ALERT} />
+            <Text style={{ flex: 1, fontSize: 12.5, color: transferMode ? t.text : ALERT, fontFamily: font.body.medium }}>{addErr}</Text>
           </View>
         ) : null}
-        <Pressable onPress={enroll} disabled={!imei.trim() || busy} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: imei.trim() ? ACCENT : hexA(t.text, 0.12) }}>
-          <Text style={{ fontSize: 15, color: imei.trim() ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{busy ? tr("list.enrolling") : tr("list.enroll")}</Text>
-        </Pressable>
+        {(() => {
+          const canSubmit = !!imei.trim() && (!transferMode || !!devicePwd.trim()) && !busy;
+          const label = busy ? tr("list.enrolling") : transferMode ? tr("list.transfer") : tr("list.enroll");
+          return (
+            <Pressable onPress={enroll} disabled={!canSubmit} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: canSubmit ? ACCENT : hexA(t.text, 0.12) }}>
+              <Text style={{ fontSize: 15, color: canSubmit ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{label}</Text>
+            </Pressable>
+          );
+        })()}
       </BottomSheet>
 
       {/* Supprimer un véhicule (appui long) — protégé par mot de passe compte */}

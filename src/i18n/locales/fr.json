@@ -47,7 +47,11 @@
     "deleteTitle": "Supprimer ce véhicule ?",
     "deleteDesc": "Le boîtier sera retiré de ton compte. Action irréversible.",
     "delete": "Supprimer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "transferTitle": "Transférer ce dispositif",
+    "transferDesc": "Cet IMEI est déjà rattaché à un compte. Saisis le mot de passe du dispositif pour le transférer vers le tien.",
+    "devicePwd": "Mot de passe du dispositif",
+    "transfer": "Transférer le dispositif"
   },
   "detail": {
     "commands": "Commandes",
@@ -82,7 +86,15 @@
     "ownerContact": "Contact utilisateur",
     "cutTitle": "Couper le moteur",
     "restartTitle": "Redémarrer le moteur",
-    "cutNote": "Assurez-vous que le véhicule ralentit ou est à l'arrêt avant de couper le moteur."
+    "cutNote": "Assurez-vous que le véhicule ralentit ou est à l'arrêt avant de couper le moteur.",
+    "devicePwd": "Mot de passe dispositif",
+    "devicePwdTitle": "Mot de passe du dispositif",
+    "devicePwdDesc": "Sert à transférer ce boîtier vers un autre compte. Par défaut « 123456 » — change-le pour sécuriser ton dispositif.",
+    "newDevicePwd": "Nouveau mot de passe du dispositif",
+    "devicePwdRule": "Mot de passe : 4 caractères minimum.",
+    "devicePwdOk": "Mot de passe du dispositif mis à jour.",
+    "devicePwdSave": "Enregistrer",
+    "devicePwdSaving": "Enregistrement…"
   },
   "pwd": { "confirmAccount": "Confirme avec le mot de passe du compte", "accountPwd": "Mot de passe du compte" },
   "alarms": {

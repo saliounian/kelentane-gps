@@ -14,6 +14,7 @@ import {
   Fence,
   Gauge,
   Hash,
+  KeyRound,
   Lock,
   MapPin,
   Navigation,
@@ -28,21 +29,24 @@ import {
   WifiOff,
   Zap,
 } from "lucide-react-native";
-import { freshColor, hexA, OFFLINE, ONLINE, Theme } from "../theme/tokens";
+import { ACCENT, freshColor, hexA, LIME_ON, OFFLINE, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convKm, convSpeed, distUnit, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
+import { useAuth } from "../state/auth";
 import { sendCommand, type CommandType } from "../data/commands";
-import { ApiError, patchVehicle, type VehiclePatch } from "../data/api";
+import { ApiError, changeDevicePassword, patchVehicle, type VehiclePatch } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { useIconOverrides } from "../state/iconOverrides";
 import {
+  BottomSheet,
   Cmd,
   CommandToast,
   EditableRow,
+  Field,
   Glass,
   GlassButton,
   Metric,
@@ -87,6 +91,8 @@ export function DetailScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "Detail">>();
   const { vehicles, refresh } = useVehicles();
   const { overrides } = useIconOverrides();
+  const { session } = useAuth();
+  const uid = session?.user?.id ?? null;
   const v = vehicles.find((x) => x.id === params.vehicleId);
 
   // édition locale (persistance base app = étape 5)
@@ -97,6 +103,10 @@ export function DetailScreen() {
   const [gpsRebooting, setGpsRebooting] = useState(false);
   const [pwdAction, setPwdAction] = useState<"cut" | "restart" | null>(null);
   const [cmd, setCmd] = useState<Command | null>(null);
+  const [devPwdOpen, setDevPwdOpen] = useState(false);
+  const [newDevPwd, setNewDevPwd] = useState("");
+  const [devPwdMsg, setDevPwdMsg] = useState<string | null>(null);
+  const [savingDevPwd, setSavingDevPwd] = useState(false);
 
   if (!v) {
     return (
@@ -146,6 +156,28 @@ export function DetailScreen() {
     setPwdAction(null);
     if (action === "cut") void run("engineStop", "Coupure du moteur", password);
     if (action === "restart") void run("engineResume", "Redémarrage du moteur", password);
+  };
+
+  // Mot de passe DU DISPOSITIF (transfert) — modifiable par le propriétaire uniquement.
+  const isOwner = uid != null && v.ownerId === uid;
+  const saveDevPwd = async () => {
+    const pw = newDevPwd.trim();
+    if (pw.length < 4) {
+      setDevPwdMsg(tr("detail.devicePwdRule"));
+      return;
+    }
+    setSavingDevPwd(true);
+    setDevPwdMsg(null);
+    try {
+      await changeDevicePassword(v.id, pw);
+      setDevPwdMsg(tr("detail.devicePwdOk"));
+      setNewDevPwd("");
+      setTimeout(() => setDevPwdOpen(false), 900);
+    } catch (e) {
+      setDevPwdMsg((e as Error).message);
+    } finally {
+      setSavingDevPwd(false);
+    }
   };
 
   return (
@@ -200,6 +232,11 @@ export function DetailScreen() {
           <View style={{ width: "48%" }}>
             <Cmd t={t} icon={Gauge} label={tr("detail.km")} onPress={() => nav.navigate("Km", { vehicleId: v.id })} />
           </View>
+          {isOwner ? (
+            <View style={{ width: "48%" }}>
+              <Cmd t={t} icon={KeyRound} label={tr("detail.devicePwd")} onPress={() => { setNewDevPwd(""); setDevPwdMsg(null); setDevPwdOpen(true); }} />
+            </View>
+          ) : null}
         </View>
 
         {/* détails dispositif */}
@@ -245,6 +282,16 @@ export function DetailScreen() {
         onConfirm={confirmPwd}
         onClose={() => setPwdAction(null)}
       />
+
+      <BottomSheet t={t} visible={devPwdOpen} onClose={() => setDevPwdOpen(false)}>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("detail.devicePwdTitle")}</Text>
+        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("detail.devicePwdDesc")}</Text>
+        <Field t={t} label={tr("detail.newDevicePwd")} icon={KeyRound} placeholder="••••••" secure value={newDevPwd} onChangeText={(v2) => { setNewDevPwd(v2); setDevPwdMsg(null); }} />
+        {devPwdMsg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{devPwdMsg}</Text> : null}
+        <Pressable onPress={saveDevPwd} disabled={savingDevPwd || newDevPwd.trim().length < 4} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: newDevPwd.trim().length >= 4 ? ACCENT : hexA(t.text, 0.12) }}>
+          <Text style={{ fontSize: 15, color: newDevPwd.trim().length >= 4 ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{savingDevPwd ? tr("detail.devicePwdSaving") : tr("detail.devicePwdSave")}</Text>
+        </Pressable>
+      </BottomSheet>
 
       {cmd ? <CommandToast t={t} cmd={cmd} onClose={() => setCmd(null)} /> : null}
     </View>
