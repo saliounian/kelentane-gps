@@ -108,3 +108,22 @@ describe("VehiclesService.enroll (enrôlement / transfert §transfert)", () => {
     expect(devices.setPassword).toHaveBeenCalledWith(5, "u1", "secret");
   });
 });
+
+describe("VehiclesService.patch (owner_id jamais une fixture)", () => {
+  it("transmet le vrai userId authentifié à upsertByImei", async () => {
+    const traccar = {
+      getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }),
+    } as never;
+    const devices = { upsertByImei: jest.fn().mockResolvedValue({ owner_id: "real-user" }) } as never;
+    const access = {
+      allowed: jest.fn().mockResolvedValue({ imeis: new Set([IMEI]), traccarIds: new Set(), rowIds: new Set() }),
+      assertImei: jest.fn(),
+    } as never;
+    const service = new VehiclesService(traccar, devices, access);
+
+    await service.patch(15, { name: "Young" }, "real-user");
+
+    // owner passé = utilisateur authentifié, PAS un seedOwner/fixture.
+    expect((devices as { upsertByImei: jest.Mock }).upsertByImei).toHaveBeenCalledWith(IMEI, 15, "real-user", { name: "Young" });
+  });
+});

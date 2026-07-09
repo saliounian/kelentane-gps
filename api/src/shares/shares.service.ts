@@ -31,7 +31,7 @@ export class SharesService {
     if (!d) throw new NotFoundException("Véhicule introuvable");
     const allowed = await this.access.allowed(userId);
     this.access.assertImei(allowed, d.uniqueId); // seul un ayant-accès peut partager
-    const row = await this.devices.upsertByImei(d.uniqueId, d.id, {});
+    const row = await this.devices.upsertByImei(d.uniqueId, d.id, userId, {});
     if (!row) throw new ServiceUnavailableException("Base app indisponible");
 
     const token = this.token();

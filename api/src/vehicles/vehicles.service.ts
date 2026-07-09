@@ -32,7 +32,7 @@ export class VehiclesService {
     if (!d) throw new NotFoundException("Véhicule introuvable");
     const allowed = await this.access.allowed(userId);
     this.access.assertImei(allowed, d.uniqueId);
-    const row = await this.devices.upsertByImei(d.uniqueId, d.id, patch);
+    const row = await this.devices.upsertByImei(d.uniqueId, d.id, userId, patch);
     const pos = positions.find((p) => p.deviceId === id);
     return mergeRow(toVM(d, pos, new Date()), row ?? undefined);
   }

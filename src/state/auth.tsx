@@ -60,11 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const userId = data.user?.id;
     if (userId) {
-      const { error: cErr } = await supabase.from("clients").insert({ id: userId, name: fullName, phone, username });
-      if (cErr && !/duplicate|unique/i.test(cErr.message)) {
-        // profil non créé mais compte auth oui : on n'échoue pas l'inscription
-        console.warn("clients insert:", cErr.message);
-      }
+      // upsert : une ligne clients minimale peut déjà exister (trigger handle_new_user).
+      // On l'enrichit avec nom/téléphone/identifiant sans échouer l'inscription.
+      const { error: cErr } = await supabase
+        .from("clients")
+        .upsert({ id: userId, name: fullName, phone, username }, { onConflict: "id" });
+      if (cErr) console.warn("clients upsert:", cErr.message);
     }
     // Accès immédiat : si pas de session (confirmation email activée), on tente la connexion.
     if (!data.session) {

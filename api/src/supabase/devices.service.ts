@@ -1,5 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { SupabaseService } from "./supabase.service";
 
 /** Ligne de la table `devices` (champs métier de la base app). */
@@ -33,15 +32,8 @@ export interface DevicePatch {
 @Injectable()
 export class DevicesService {
   private readonly log = new Logger(DevicesService.name);
-  private readonly seedOwner: string;
 
-  constructor(
-    private readonly supa: SupabaseService,
-    config: ConfigService,
-  ) {
-    // Propriétaire de dev tant que l'auth n'est pas branchée (étape 8/9).
-    this.seedOwner = config.get<string>("SEED_OWNER_ID") ?? "000000aa-0000-0000-0000-0000000000aa";
-  }
+  constructor(private readonly supa: SupabaseService) {}
 
   get enabled(): boolean {
     return this.supa.client !== null;
@@ -60,22 +52,26 @@ export class DevicesService {
     return out;
   }
 
-  /** Upsert des champs métier d'un device (clé = IMEI). */
-  async upsertByImei(imei: string, traccarId: number, patch: DevicePatch): Promise<DeviceRow | null> {
+  /**
+   * Enregistre les champs métier d'un device (clé = IMEI).
+   * - Ligne existante → UPDATE des seuls champs métier ; `owner_id` n'est JAMAIS
+   *   touché (bug corrigé : l'ancien upsert réécrivait owner_id sur une fixture).
+   * - Ligne absente → création possédée par l'utilisateur authentifié `ownerId`.
+   */
+  async upsertByImei(imei: string, traccarId: number, ownerId: string, patch: DevicePatch): Promise<DeviceRow | null> {
     if (!this.supa.client) return null;
-    const { data, error } = await this.supa.client
+    const { data: updated, error } = await this.supa.client
       .from("devices")
-      .upsert(
-        { imei, traccar_id: traccarId, owner_id: this.seedOwner, ...patch },
-        { onConflict: "imei" },
-      )
+      .update({ traccar_id: traccarId, ...patch })
+      .eq("imei", imei)
       .select("*")
-      .single();
+      .maybeSingle();
     if (error) {
-      this.log.error(`Upsert device ${imei}: ${error.message}`);
+      this.log.error(`Update device ${imei}: ${error.message}`);
       throw error;
     }
-    return data as DeviceRow;
+    if (updated) return updated as DeviceRow;
+    return this.insertOwned(ownerId, imei, traccarId, patch);
   }
 
   /** Existe déjà (n'importe quel tenant) ? */
