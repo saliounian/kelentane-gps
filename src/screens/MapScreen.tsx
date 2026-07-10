@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { Clock, Crosshair, Info, Layers, Navigation, Route, Search } from "lucide-react-native";
+import { Clock, Crosshair, Info, Layers, Navigation, PersonStanding, Route, Search } from "lucide-react-native";
 import { ACCENT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -63,6 +63,14 @@ export function MapScreen() {
     recenter(v);
   };
 
+  // Street View réel de Google, centré sur la position du véhicule sélectionné.
+  // Pas d'intégration Street View native fiable côté Expo/react-native-maps → on
+  // ouvre le panorama via l'URL officielle Google Maps (app native ou navigateur).
+  const openStreetView = (v: VehicleVM | null) => {
+    if (!v?.lat || !v?.lng) return;
+    Linking.openURL(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${v.lat},${v.lng}`);
+  };
+
   const ActiveIcon = active ? iconForVehicle(active) : null;
 
   return (
@@ -117,6 +125,7 @@ export function MapScreen() {
           onPress={() => setMapType((m) => (m === "standard" ? "satellite" : "standard"))}
         />
         <GlassButton t={t} icon={Crosshair} size={38} color={ACCENT} onPress={() => recenter(active)} />
+        <GlassButton t={t} icon={PersonStanding} size={38} color={t.text} onPress={() => openStreetView(active)} />
       </View>
 
       {/* bandeau erreur */}

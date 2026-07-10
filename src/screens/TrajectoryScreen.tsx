@@ -5,13 +5,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Clock, MapPin, Pause, Play, RotateCcw } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, ONLINE, Theme } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
-import { fetchRoute } from "../data/reports";
-import { Glass, GlassButton, Metric } from "../ui";
+import { fetchRoute, type Range } from "../data/reports";
+import { DateRangeSheet, Glass, GlassButton, Metric } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { RoutePoint } from "../types/reports";
+
+const DAY_MS = 86400000;
+const fmtShort = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
 function haversine(a: RoutePoint, b: RoutePoint): number {
   const R = 6371;
@@ -36,15 +39,35 @@ export function TrajectoryScreen() {
   const [playing, setPlaying] = useState(false);
   const [speedMode, setSpeedMode] = useState<SpeedMode>("Moyen");
   const [track, setTrack] = useState<LayoutRectangle | null>(null);
+  const [mode, setMode] = useState<Range>("7d");
+  const [customFrom, setCustomFrom] = useState<Date | null>(null);
+  const [customTo, setCustomTo] = useState<Date | null>(null);
+  const [perso, setPerso] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const r = await fetchRoute(params.vehicleId);
+        let from: string;
+        let to: string;
+        if (mode === "custom") {
+          if (!customFrom || !customTo) return; // plage pas encore choisie
+          from = customFrom.toISOString();
+          to = customTo.toISOString();
+        } else {
+          const days = mode === "30d" ? 30 : 7;
+          const end = new Date();
+          const start = new Date(end.getTime() - (days - 1) * DAY_MS);
+          start.setHours(0, 0, 0, 0);
+          from = start.toISOString();
+          to = end.toISOString();
+        }
+        const r = await fetchRoute(params.vehicleId, from, to);
         if (!alive) return;
         setPts(r);
+        setProgress(0);
+        setPlaying(false);
         setError(r.length ? null : tr("traj.noTrip"));
       } catch (e) {
         if (alive) setError((e as Error).message);
@@ -53,7 +76,15 @@ export function TrajectoryScreen() {
     return () => {
       alive = false;
     };
-  }, [params.vehicleId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.vehicleId, mode, customFrom, customTo]);
+
+  const customLabel = mode === "custom" && customFrom && customTo ? `${fmtShort(customFrom)}–${fmtShort(customTo)}` : tr("km.custom");
+  const chips: { id: Range; label: string }[] = [
+    { id: "7d", label: tr("km.d7") },
+    { id: "30d", label: tr("km.d30") },
+    { id: "custom", label: customLabel },
+  ];
 
   useEffect(() => {
     if (!playing || pts.length < 2) return;
@@ -123,6 +154,22 @@ export function TrajectoryScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 14, marginTop: -22, gap: 12 }}>
+          {/* intervalle — même sélecteur que Kilométrage (7j / 30j / Perso) */}
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {chips.map((c) => {
+              const on = mode === c.id;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => (c.id === "custom" ? setPerso(true) : setMode(c.id))}
+                  style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: on ? ACCENT : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
+                >
+                  <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{c.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           <Glass t={t} dark={dark} style={{ padding: 16 }}>
             {/* lecture live */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -182,6 +229,20 @@ export function TrajectoryScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <DateRangeSheet
+        t={t}
+        visible={perso}
+        initialFrom={customFrom}
+        initialTo={customTo}
+        onApply={(from, to) => {
+          setCustomFrom(from);
+          setCustomTo(to);
+          setMode("custom");
+          setPerso(false);
+        }}
+        onClose={() => setPerso(false)}
+      />
     </View>
   );
 }

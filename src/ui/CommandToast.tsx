@@ -25,10 +25,10 @@ export function CommandToast({ t, cmd, onClose }: Props) {
   const Icon = meta.icon;
   const spin = useRef(new Animated.Value(0)).current;
 
-  // auto-close une fois résolu
+  // auto-close une fois résolu (assez long pour lire, pas trop)
   useEffect(() => {
     if (cmd.state === "pending") return;
-    const id = setTimeout(onClose, 2600);
+    const id = setTimeout(onClose, 3200);
     return () => clearTimeout(id);
   }, [cmd.state, onClose]);
 
@@ -50,52 +50,59 @@ export function CommandToast({ t, cmd, onClose }: Props) {
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
 
   return (
-    <View style={{ position: "absolute", left: 0, right: 0, top: insets.top + 8, alignItems: "center", zIndex: 1000 }}>
+    // Overlay plein écran, toast centré verticalement. `box-none` : ne bloque pas
+    // les interactions derrière, seul le toast (bouton fermer) est interactif.
+    <View
+      pointerEvents="box-none"
+      style={{ position: "absolute", top: insets.top, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+    >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: 11,
-          maxWidth: 290,
-          borderRadius: 16,
-          paddingVertical: 11,
-          paddingHorizontal: 14,
+          gap: 13,
+          maxWidth: 340,
+          marginHorizontal: 24,
+          borderRadius: 20,
+          paddingVertical: 16,
+          paddingHorizontal: 18,
           backgroundColor: t.glassSolid,
           borderWidth: 1,
           borderColor: t.border,
           shadowColor: "#000",
           shadowOpacity: 0.4,
-          shadowRadius: 34,
-          shadowOffset: { width: 0, height: 14 },
+          shadowRadius: 40,
+          shadowOffset: { width: 0, height: 18 },
         }}
       >
         <Animated.View
           style={{
-            width: 34,
-            height: 34,
-            borderRadius: 10,
+            width: 44,
+            height: 44,
+            borderRadius: 13,
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: hexA(meta.color, 0.16),
-            transform: meta.spin ? [{ rotate }] : undefined,
+            // `0deg` explicite hors rotation : évite le résidu natif (check penché).
+            transform: [{ rotate: meta.spin ? rotate : "0deg" }],
           }}
         >
-          <Icon size={18} color={meta.color} />
+          <Icon size={24} color={meta.color} />
         </Animated.View>
         <View style={{ flexShrink: 1 }}>
-          <Text style={{ fontSize: 13.5, color: t.text, fontFamily: font.body.bold }}>
+          <Text style={{ fontSize: 15.5, color: t.text, fontFamily: font.body.bold }}>
             {meta.title}
           </Text>
           <Text
             numberOfLines={1}
-            style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}
+            style={{ fontSize: 12.5, color: t.sub, marginTop: 1, fontFamily: font.body.regular }}
           >
             {cmd.label}
           </Text>
         </View>
         {cmd.state !== "pending" ? (
           <Pressable onPress={onClose} accessibilityLabel="Fermer" hitSlop={8}>
-            <X size={15} color={t.sub} />
+            <X size={17} color={t.sub} />
           </Pressable>
         ) : null}
       </View>
