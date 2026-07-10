@@ -65,7 +65,8 @@ export interface TraccarPosition {
   fixTime: string;
   valid: boolean;
   attributes: {
-    battery?: number; // % batterie interne
+    battery?: number; // % batterie interne (si le boîtier la remonte)
+    batteryLevel?: number; // % batterie interne (nom Traccar pour certains protocoles)
     power?: number; // tension véhicule (V)
     voltage?: number;
     ignition?: boolean; // ACC

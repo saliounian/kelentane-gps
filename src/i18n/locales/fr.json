@@ -15,7 +15,8 @@
     "on": "Marche",
     "off": "Arrêt",
     "noAddress": "Adresse indisponible",
-    "vehicleNotFound": "Véhicule introuvable."
+    "vehicleNotFound": "Véhicule introuvable.",
+    "na": "N/D"
   },
   "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
   "cal": {
@@ -76,6 +77,7 @@
     "accState": "État ACC",
     "plate": "Immatriculation",
     "intBattery": "Batterie interne",
+    "batteryNA": "Non disponible",
     "vehVoltage": "Tension véhicule",
     "gsm": "Signal GSM",
     "sats": "Satellites GPS",

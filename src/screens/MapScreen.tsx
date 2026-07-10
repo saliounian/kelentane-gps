@@ -191,7 +191,7 @@ export function MapScreen() {
 
           <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
             <Metric t={t} label={tr("common.speed")} value={`${convSpeed(active.speed, units)}`} unit={speedUnit(units, tr)} />
-            <Metric t={t} label={tr("common.battery")} value={active.battery != null ? `${active.battery}` : "—"} unit="%" />
+            <Metric t={t} label={tr("common.battery")} value={active.battery != null ? `${active.battery}` : tr("common.na")} unit={active.battery != null ? "%" : undefined} />
             <Metric
               t={t}
               label={tr("common.connection")}

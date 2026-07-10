@@ -198,7 +198,7 @@ export function DetailScreen() {
         {/* metrics */}
         <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", gap: 8 }}>
           <Metric t={t} label={tr("common.speed")} value={`${convSpeed(v.speed, units)}`} unit={speedUnit(units, tr)} />
-          <Metric t={t} label={tr("common.battery")} value={v.battery != null ? `${v.battery}` : "—"} unit="%" />
+          <Metric t={t} label={tr("common.battery")} value={v.battery != null ? `${v.battery}` : tr("common.na")} unit={v.battery != null ? "%" : undefined} />
           <Metric t={t} label={tr("common.tension")} value={v.voltage != null ? `${v.voltage}` : "—"} unit="V" />
         </Glass>
 
@@ -260,7 +260,7 @@ export function DetailScreen() {
           <Row t={t} icon={Cpu} label={tr("detail.model")} value={v.model ?? "—"} />
           <Row t={t} icon={Power} label={tr("detail.accState")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
           <Row t={t} icon={Hash} label={tr("detail.plate")} value={v.plate ?? "—"} mono />
-          <Row t={t} icon={Battery} label={tr("detail.intBattery")} value={v.battery != null ? `${v.battery}%` : "—"} />
+          <Row t={t} icon={Battery} label={tr("detail.intBattery")} value={v.battery != null ? `${v.battery}%` : tr("detail.batteryNA")} />
           <Row t={t} icon={Zap} label={tr("detail.vehVoltage")} value={v.voltage != null ? `${v.voltage} V` : "—"} />
           <Row t={t} icon={Radio} label={tr("detail.gsm")} value={v.gsm != null ? `${v.gsm}/5` : "—"} />
           <Row t={t} icon={Satellite} label={tr("detail.sats")} value={v.sats != null ? `${v.sats}` : "—"} />

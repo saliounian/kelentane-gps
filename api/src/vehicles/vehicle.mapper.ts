@@ -6,7 +6,10 @@ const KNOTS_TO_KMH = 1.852;
 const ONLINE = "#36D399";
 const PARKED = "#FFB14E";
 const OFFLINE = "#8E8E93";
-const OFFLINE_AFTER_MS = 24 * 60 * 60 * 1000;
+// Délai sans mise à jour au-delà duquel un boîtier est considéré hors ligne.
+// Configurable via env OFFLINE_AFTER_MIN (défaut 120 min). Un boîtier muet depuis
+// > ce délai n'est PLUS « en ligne », même si Traccar n'a pas encore basculé son statut.
+const OFFLINE_AFTER_MS = (Number(process.env.OFFLINE_AFTER_MIN) || 120) * 60 * 1000;
 
 export function statusColor(status: VehicleStatus): string {
   switch (status) {
@@ -28,7 +31,10 @@ function deriveStatus(
 ): VehicleStatus {
   const last = d.lastUpdate ? new Date(d.lastUpdate).getTime() : 0;
   const ageMs = last ? now.getTime() - last : Infinity;
-  if (d.status === "offline" || ageMs > OFFLINE_AFTER_MS) return "offline";
+  // « online » exige un statut Traccar réellement online ET une mise à jour fraîche.
+  // Traccar renvoie online | offline | unknown : "unknown" (ex. boîtier à batterie
+  // morte) est traité comme hors ligne, plus seulement "offline".
+  if (d.status !== "online" || ageMs > OFFLINE_AFTER_MS) return "offline";
   if (speed > 0) return "moving";
   if (acc === false) return "parked";
   return "online";
@@ -52,7 +58,9 @@ export function toVM(d: TraccarDevice, p: TraccarPosition | undefined, now: Date
     lng: p ? String(p.longitude) : null,
     addr: p?.address ?? null,
     signal: p?.valid ? "GPS" : "LBS",
-    battery: (a.battery as number | undefined) ?? null,
+    // null = donnée batterie ABSENTE à la source (certains GT06N n'en remontent pas)
+    // → l'app affiche « Non disponible », pas un 0 trompeur.
+    battery: (a.battery as number | undefined) ?? (a.batteryLevel as number | undefined) ?? null,
     voltage: (a.power as number | undefined) ?? (a.voltage as number | undefined) ?? null,
     acc,
     sats: (a.sat as number | undefined) ?? null,

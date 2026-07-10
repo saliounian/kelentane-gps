@@ -15,7 +15,8 @@
     "on": "On",
     "off": "Off",
     "noAddress": "Address unavailable",
-    "vehicleNotFound": "Vehicle not found."
+    "vehicleNotFound": "Vehicle not found.",
+    "na": "N/A"
   },
   "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
   "cal": {
@@ -76,6 +77,7 @@
     "accState": "ACC state",
     "plate": "Plate",
     "intBattery": "Internal battery",
+    "batteryNA": "Not available",
     "vehVoltage": "Vehicle voltage",
     "gsm": "GSM signal",
     "sats": "GPS satellites",
