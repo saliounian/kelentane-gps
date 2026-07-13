@@ -77,6 +77,8 @@ export function toVM(d: TraccarDevice, p: TraccarPosition | undefined, now: Date
     owner: d.contact ?? null,
     ownerId: null,
     iconKey: null,
+    accessRole: null, // renseigné par VehiclesService.list (dépend du compte courant)
+    accessStatus: null,
   };
 }
 

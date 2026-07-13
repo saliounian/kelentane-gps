@@ -45,7 +45,9 @@ export class CommandsService {
       const devices = await this.traccar.getDevices();
       const dev = devices.find((d) => d.id === deviceId);
       const allowed = await this.access.allowed(ctx.userId);
-      if (dev && !allowed.imeis.has(dev.uniqueId)) throw new ForbiddenException("Accès refusé à ce véhicule");
+      // Garde d'ACTION : accès actif + rôle 'action' requis (§4 consultation = lecture
+      // seule ; §5 device à revalider = hors périmètre actif → refusé).
+      if (dev) this.access.assertAction(allowed, dev.uniqueId);
       offline = !dev || dev.status === "offline";
     } catch (e) {
       if (e instanceof ForbiddenException) throw e;

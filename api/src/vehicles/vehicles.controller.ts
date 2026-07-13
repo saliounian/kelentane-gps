@@ -18,7 +18,11 @@ interface PatchBody {
 interface EnrollBody {
   imei?: string;
   name?: string;
-  devicePassword?: string; // requis seulement pour transférer un IMEI déjà enregistré
+}
+
+interface AccessBody {
+  imei?: string;
+  devicePassword?: string;
 }
 
 @Controller("vehicles")
@@ -39,19 +43,37 @@ export class VehiclesController {
     }
   }
 
-  /** POST /vehicles → enrôle un boîtier (IMEI) au nom du client. */
+  /**
+   * POST /vehicles/access → ajoute un ACCÈS coexistant à un device EXISTANT via
+   * IMEI + mot de passe du dispositif (§3). C'est le chemin « Ajouter un dispositif »
+   * de l'app. Erreur générique unique (anti-énumération), 429 si rate-limité.
+   */
+  @Post("access")
+  async addAccess(@Body() body: AccessBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
+    if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
+    try {
+      return await this.vehicles.addAccess(user.id, body.imei.replace(/\s/g, ""), body.devicePassword ?? "");
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  /**
+   * POST /vehicles → enrôle un device NEUF (création cœur GPS) — admin / auto-détection.
+   * Un device existant s'ajoute via POST /vehicles/access.
+   */
   @Post()
   async enroll(@Body() body: EnrollBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
     try {
-      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name, body.devicePassword);
+      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name);
     } catch (e) {
       throw this.wrap(e);
     }
   }
 
   /** PATCH /vehicles/:id/device-password → change le mot de passe DU DISPOSITIF
-   *  (propriétaire uniquement). Distinct du mot de passe du compte. */
+   *  (accès actif requis). Distinct du mot de passe du compte. Révoque §5 les autres. */
   @Patch(":id/device-password")
   async setDevicePassword(
     @Param("id", ParseIntPipe) id: number,
@@ -66,12 +88,12 @@ export class VehiclesController {
     } catch (e) {
       throw this.wrap(e);
     }
-    if (!ok) throw new HttpException("Seul le propriétaire peut changer le mot de passe du dispositif.", HttpStatus.FORBIDDEN);
+    if (!ok) throw new HttpException("Accès requis pour changer le mot de passe du dispositif.", HttpStatus.FORBIDDEN);
     return { ok: true };
   }
 
-  /** DELETE /vehicles/:id → retire un véhicule. Exige le mot de passe DU COMPTE
-   *  (vérifié côté serveur) + propriétaire du véhicule. */
+  /** DELETE /vehicles/:id → retire l'accès du compte courant (mot de passe compte
+   *  requis en confirmation). Ne supprime pas le device ni les autres accès. */
   @Delete(":id")
   async remove(
     @Param("id", ParseIntPipe) id: number,

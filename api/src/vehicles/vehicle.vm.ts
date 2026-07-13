@@ -33,4 +33,7 @@ export interface VehicleVM {
   owner: string | null;
   ownerId: string | null; // = clients.id propriétaire (null si device non joint / partagé)
   iconKey: string | null;
+  // Accès du compte courant sur ce device (§device_access) :
+  accessRole: "consultation" | "action" | null; // gating des actions
+  accessStatus: "active" | "revalidate" | null; // 'revalidate' → grisé (§5)
 }

@@ -29,4 +29,6 @@ export interface VehicleVM {
   owner: string | null;
   ownerId: string | null;
   iconKey: string | null;
+  accessRole: "consultation" | "action" | null;
+  accessStatus: "active" | "revalidate" | null;
 }

@@ -82,22 +82,76 @@ export class DevicesService {
   }
 
   /**
-   * Transfère la propriété d'un device APRÈS vérification du mot de passe device
-   * (comparaison bcrypt en base via RPC SECURITY DEFINER). Le hash ne quitte
-   * jamais Postgres. Retourne true si transféré, false si mot de passe incorrect.
+   * Ajoute un ACCÈS coexistant au device (§device_access) après vérif du mot de
+   * passe device + rate-limit, entièrement en base (RPC SECURITY DEFINER). Ne touche
+   * PAS aux accès des autres comptes. Retourne 'ok' | 'bad' | 'rate_limited'
+   * ('bad' identique pour IMEI inconnu ou mauvais mot de passe — anti-énumération).
    */
-  async transferByImei(imei: string, devicePassword: string, newOwnerId: string): Promise<boolean> {
-    if (!this.supa.client) return false;
-    const { data, error } = await this.supa.client.rpc("device_transfer", {
+  async addAccess(imei: string, devicePassword: string, userId: string): Promise<"ok" | "bad" | "rate_limited"> {
+    if (!this.supa.client) return "bad";
+    const { data, error } = await this.supa.client.rpc("device_add_access", {
       p_imei: imei,
       p_password: devicePassword,
-      p_new_owner: newOwnerId,
+      p_user: userId,
     });
     if (error) {
-      this.log.error(`device_transfer ${imei}: ${error.message}`);
+      this.log.error(`device_add_access ${imei}: ${error.message}`);
+      throw error;
+    }
+    return (data as "ok" | "bad" | "rate_limited") ?? "bad";
+  }
+
+  /** Premier accès du créateur lors de l'enrôlement d'un device NEUF (sans mot de passe). */
+  async insertAccess(deviceRowId: string, userId: string, role: "consultation" | "action" = "action"): Promise<void> {
+    if (!this.supa.client) return;
+    const { error } = await this.supa.client
+      .from("device_access")
+      .upsert({ device_id: deviceRowId, user_id: userId, role, status: "active" }, { onConflict: "device_id,user_id" });
+    if (error) this.log.error(`insertAccess ${deviceRowId}: ${error.message}`);
+  }
+
+  /** Accorde/ajuste l'accès d'un SOUS-COMPTE à un device (§4, réservé compte principal). */
+  async grantSubaccount(deviceRowId: string, subUserId: string, role: "consultation" | "action", parentId: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const { data, error } = await this.supa.client.rpc("device_grant_subaccount", {
+      p_device_id: deviceRowId,
+      p_sub_user: subUserId,
+      p_role: role,
+      p_parent: parentId,
+    });
+    if (error) {
+      this.log.error(`device_grant_subaccount ${deviceRowId}: ${error.message}`);
       throw error;
     }
     return data === true;
+  }
+
+  /** Ligne device (id + traccar_id) par IMEI — pour résoudre le device_id d'un accès. */
+  async getRowByImei(imei: string): Promise<{ id: string; traccar_id: number | null } | null> {
+    if (!this.supa.client) return null;
+    const { data } = await this.supa.client.from("devices").select("id, traccar_id").eq("imei", imei).maybeSingle();
+    return (data as { id: string; traccar_id: number | null } | null) ?? null;
+  }
+
+  /**
+   * Retire l'accès du compte courant à un device (§device_access). Ne supprime NI
+   * le device NI les accès des autres comptes — cohabitation préservée. Retourne
+   * true si une ligne d'accès a été retirée.
+   */
+  async removeAccessByImei(imei: string, userId: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const row = await this.getRowByImei(imei);
+    if (!row) return false;
+    const { error, count } = await this.supa.client
+      .from("device_access")
+      .delete({ count: "exact" })
+      .eq("device_id", row.id)
+      .eq("user_id", userId);
+    if (error) {
+      this.log.error(`removeAccess ${imei}: ${error.message}`);
+      throw error;
+    }
+    return (count ?? 0) > 0;
   }
 
   /** Change le mot de passe device (propriétaire uniquement, vérifié en base). */
