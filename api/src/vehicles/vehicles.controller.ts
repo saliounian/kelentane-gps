@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
 import { SupabaseService } from "../supabase/supabase.service";
+import { AccountsService } from "../supabase/accounts.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user";
 import type { DevicePatch } from "../supabase/devices.service";
@@ -31,6 +32,7 @@ export class VehiclesController {
   constructor(
     private readonly vehicles: VehiclesService,
     private readonly supa: SupabaseService,
+    private readonly accounts: AccountsService,
   ) {}
 
   /** GET /vehicles → view-model §6.1, FILTRÉ au périmètre du client. */
@@ -65,8 +67,12 @@ export class VehiclesController {
   @Post()
   async enroll(@Body() body: EnrollBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
+    const imei = body.imei.replace(/\s/g, "");
     try {
-      return await this.vehicles.enroll(user.id, body.imei.replace(/\s/g, ""), body.name);
+      const vm = await this.vehicles.enroll(user.id, imei, body.name);
+      // §2 : compte walk-up IMEI + accès (non bloquant, n'échoue jamais l'enrôlement).
+      await this.accounts.ensureDeviceAccount(imei);
+      return vm;
     } catch (e) {
       throw this.wrap(e);
     }

@@ -10,6 +10,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SharesModule } from "./shares/shares.module";
+import { SubaccountsModule } from "./subaccounts/subaccounts.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { TraccarModule } from "./traccar/traccar.module";
 import { VehiclesModule } from "./vehicles/vehicles.module";
@@ -27,6 +28,7 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     GeofencesModule,
     AuthModule,
     SharesModule,
+    SubaccountsModule,
     RealtimeModule,
   ],
   controllers: [AppController],

@@ -42,4 +42,26 @@ export class SupabaseService {
     const { error } = await c.auth.signInWithPassword({ email, password });
     return !error;
   }
+
+  /**
+   * Crée un compte auth (service_role, email pré-confirmé car identité synthétique).
+   * Retourne l'id créé, ou null si indisponible / déjà existant. Le trigger
+   * handle_new_user crée la ligne clients associée.
+   */
+  async createAuthUser(email: string, password: string): Promise<string | null> {
+    if (!this.client) return null;
+    const { data, error } = await this.client.auth.admin.createUser({ email, password, email_confirm: true });
+    if (error || !data?.user) {
+      this.log.warn(`createAuthUser ${email}: ${error?.message ?? "échec"}`);
+      return null;
+    }
+    return data.user.id;
+  }
+
+  /** Supprime un compte auth (la ligne clients + accès cascadent via FK). */
+  async deleteAuthUser(userId: string): Promise<void> {
+    if (!this.client) return;
+    const { error } = await this.client.auth.admin.deleteUser(userId);
+    if (error) this.log.error(`deleteAuthUser ${userId}: ${error.message}`);
+  }
 }
