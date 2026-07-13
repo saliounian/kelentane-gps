@@ -31,6 +31,28 @@ export function fetchVehicles(signal?: AbortSignal): Promise<VehicleVM[]> {
   return getJson<VehicleVM[]>("/vehicles", signal);
 }
 
+/**
+ * POST /auth/imei-login — login par IMEI routé via l'API (rate-limité par IMEI, §3.5).
+ * Retourne les tokens de session que l'app pose via `supabase.auth.setSession`.
+ * Erreur générique unique ; 429 si trop de tentatives.
+ */
+export async function imeiLogin(imei: string, password: string): Promise<{ accessToken: string; refreshToken: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/auth/imei-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ imei, password }),
+    });
+  } catch (e) {
+    throw new ApiError((e as Error).message || "Réseau indisponible");
+  }
+  if (res.ok) return (await res.json()) as { accessToken: string; refreshToken: string };
+  const body = (await res.json().catch(() => null)) as { message?: string } | null;
+  if (res.status === 429) throw new ApiError(body?.message ?? "Trop de tentatives. Réessaie dans 15 minutes.", 429);
+  throw new ApiError("IMEI ou mot de passe incorrect", res.status);
+}
+
 /** Champs métier éditables persistés via PATCH /vehicles/:id. */
 export interface VehiclePatch {
   name?: string;
@@ -41,26 +63,19 @@ export interface VehiclePatch {
   phone?: string;
 }
 
-/** Levée quand l'IMEI existe déjà : l'app doit demander le mot de passe du dispositif. */
-export class TransferRequiredError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TransferRequiredError";
-  }
-}
-
 /**
- * POST /vehicles — enrôle un boîtier (IMEI), ou le TRANSFÈRE si déjà rattaché à un
- * autre compte (avec `devicePassword`). Sans mot de passe sur un IMEI existant →
- * `TransferRequiredError` (l'app affiche le champ mot de passe du dispositif).
+ * POST /vehicles/access — ajoute un ACCÈS coexistant à un device EXISTANT via
+ * IMEI + mot de passe du dispositif (§3). Plusieurs comptes peuvent coexister.
+ * Erreur générique UNIQUE (anti-énumération) : IMEI inconnu et mauvais mot de passe
+ * renvoient le même message ; 429 si trop de tentatives (rate-limit par IMEI).
  */
-export async function enrollVehicle(imei: string, name?: string, devicePassword?: string): Promise<VehicleVM> {
+export async function addVehicleAccess(imei: string, devicePassword: string): Promise<VehicleVM> {
   let res: Response;
   try {
-    res = await fetch(`${API_URL}/vehicles`, {
+    res = await fetch(`${API_URL}/vehicles/access`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", ...(await authHeader()) },
-      body: JSON.stringify({ imei, name, devicePassword }),
+      body: JSON.stringify({ imei, devicePassword }),
     });
   } catch (e) {
     throw new ApiError((e as Error).message || "Réseau indisponible");
@@ -68,14 +83,8 @@ export async function enrollVehicle(imei: string, name?: string, devicePassword?
   if (res.ok) return (await res.json()) as VehicleVM;
 
   const body = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
-  if (res.status === 409 && body?.code === "transfer_required") {
-    throw new TransferRequiredError(body.message ?? "Mot de passe du dispositif requis");
-  }
-  if (res.status === 403 && body?.code === "bad_device_password") {
-    throw new ApiError("Mot de passe incorrect pour ce dispositif", 403);
-  }
-  if (res.status === 409) throw new ApiError("Ce boîtier est déjà enregistré", 409);
-  if (res.status === 400) throw new ApiError(body?.message ?? "IMEI invalide", 400);
+  if (res.status === 429) throw new ApiError(body?.message ?? "Trop de tentatives. Réessaie dans 15 minutes.", 429);
+  if (res.status === 403 || res.status === 400) throw new ApiError("IMEI ou mot de passe incorrect", res.status);
   throw new ApiError(body?.message ?? `Erreur ${res.status}`, res.status);
 }
 

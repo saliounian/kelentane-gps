@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { AlertTriangle, Battery, Hash, KeyRound, Plus, Search, Trash2 } from "lucide-react-native";
+import { AlertTriangle, Battery, Hash, KeyRound, Lock, Plus, Search, Trash2 } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,7 @@ import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
-import { deleteVehicle, enrollVehicle, TransferRequiredError } from "../data/api";
+import { addVehicleAccess, deleteVehicle } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { BottomSheet, Field, Glass, StatusDot } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
@@ -27,11 +27,9 @@ export function ListScreen() {
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [imei, setImei] = useState("");
-  const [ename, setEname] = useState("");
+  const [devicePwd, setDevicePwd] = useState("");
   const [busy, setBusy] = useState(false);
   const [addErr, setAddErr] = useState<string | null>(null);
-  const [transferMode, setTransferMode] = useState(false); // IMEI déjà enregistré → transfert
-  const [devicePwd, setDevicePwd] = useState("");
   const [delTarget, setDelTarget] = useState<VehicleVM | null>(null);
   const [delBusy, setDelBusy] = useState(false);
   const [delPwd, setDelPwd] = useState("");
@@ -39,33 +37,31 @@ export function ListScreen() {
 
   const openDelete = (v: VehicleVM) => { setDelPwd(""); setDelErr(null); setDelTarget(v); };
 
+  const openAdd = (prefillImei = "") => {
+    setImei(prefillImei);
+    setDevicePwd("");
+    setAddErr(null);
+    setAddOpen(true);
+  };
   const closeAdd = () => {
     setAddOpen(false);
-    setTransferMode(false);
+    setImei("");
     setDevicePwd("");
     setAddErr(null);
   };
 
-  const enroll = async () => {
-    if (busy) return;
-    if (transferMode && !devicePwd.trim()) return;
+  // §3 : ajout d'accès par IMEI + mot de passe du dispositif (coexistant).
+  // §5 : sert aussi à ré-valider un device grisé (IMEI pré-rempli).
+  const add = async () => {
+    if (busy || !imei.trim() || !devicePwd.trim()) return;
     setBusy(true);
     setAddErr(null);
     try {
-      await enrollVehicle(imei, ename || undefined, transferMode ? devicePwd : undefined);
-      setImei("");
-      setEname("");
-      setDevicePwd("");
-      setTransferMode(false);
-      setAddOpen(false);
+      await addVehicleAccess(imei.trim(), devicePwd.trim());
+      closeAdd();
       refresh();
     } catch (e) {
-      if (e instanceof TransferRequiredError) {
-        setTransferMode(true); // révèle le champ mot de passe du dispositif
-        setAddErr(e.message);
-      } else {
-        setAddErr((e as Error).message);
-      }
+      setAddErr((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -109,7 +105,7 @@ export function ListScreen() {
             <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>{tr("list.subtitle")}</Text>
           </View>
           <Pressable
-            onPress={() => { setAddErr(null); setAddOpen(true); }}
+            onPress={() => openAdd()}
             style={{
               width: 42,
               height: 42,
@@ -160,9 +156,17 @@ export function ListScreen() {
           <View style={{ gap: 10 }}>
             {filtered.map((v) => {
               const Icon = iconForVehicle(v);
+              // §5 : device « à revalider » (mot de passe changé par un autre compte)
+              // → grisé + inaccessible jusqu'à ré-saisie du mot de passe (ré-ajout).
+              const locked = v.accessStatus === "revalidate";
               return (
-                <Pressable key={v.id} onPress={() => nav.navigate("Detail", { vehicleId: v.id })} onLongPress={() => openDelete(v)} delayLongPress={500}>
-                  <Glass t={t} dark={dark} radius={18} style={{ padding: 13, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <Pressable
+                  key={v.id}
+                  onPress={() => (locked ? openAdd(v.imei) : nav.navigate("Detail", { vehicleId: v.id }))}
+                  onLongPress={() => openDelete(v)}
+                  delayLongPress={500}
+                >
+                  <Glass t={t} dark={dark} radius={18} style={{ padding: 13, flexDirection: "row", alignItems: "center", gap: 12, opacity: locked ? 0.55 : 1 }}>
                     <View
                       style={{
                         width: 44,
@@ -170,32 +174,39 @@ export function ListScreen() {
                         borderRadius: 13,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: hexA(v.color, 0.16),
+                        backgroundColor: hexA(locked ? t.sub : v.color, 0.16),
                       }}
                     >
-                      <Icon size={22} color={v.color} />
+                      <Icon size={22} color={locked ? t.sub : v.color} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <Text style={{ fontSize: 15, color: t.text, fontFamily: font.body.bold }}>{v.name}</Text>
-                        <StatusDot status={v.status} color={v.color} />
+                        {locked ? null : <StatusDot status={v.status} color={v.color} />}
                       </View>
-                      <Text numberOfLines={1} style={{ fontSize: 12, color: t.sub, marginTop: 1, fontFamily: font.body.regular }}>
-                        {v.addr ?? "—"}
+                      <Text numberOfLines={1} style={{ fontSize: 12, color: locked ? PARKED : t.sub, marginTop: 1, fontFamily: font.body.regular }}>
+                        {locked ? tr("list.revalidateHint") : v.addr ?? "—"}
                       </Text>
                     </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={{ fontSize: 15, color: t.text, fontFamily: font.mono.semibold }}>
-                        {convSpeed(v.speed, units)}
-                        <Text style={{ fontSize: 10, color: t.sub }}> {speedUnit(units, tr)}</Text>
-                      </Text>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                        <Battery size={11} color={t.sub} />
-                        <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
-                          {v.battery != null ? `${v.battery}%` : "—"}
+                    {locked ? (
+                      <View style={{ alignItems: "center", gap: 3 }}>
+                        <Lock size={16} color={PARKED} />
+                        <Text style={{ fontSize: 10, color: PARKED, fontFamily: font.body.bold }}>{tr("list.revalidate")}</Text>
+                      </View>
+                    ) : (
+                      <View style={{ alignItems: "flex-end" }}>
+                        <Text style={{ fontSize: 15, color: t.text, fontFamily: font.mono.semibold }}>
+                          {convSpeed(v.speed, units)}
+                          <Text style={{ fontSize: 10, color: t.sub }}> {speedUnit(units, tr)}</Text>
                         </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                          <Battery size={11} color={t.sub} />
+                          <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
+                            {v.battery != null ? `${v.battery}%` : "—"}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
+                    )}
                   </Glass>
                 </Pressable>
               );
@@ -204,28 +215,23 @@ export function ListScreen() {
         )}
       </ScrollView>
 
-      {/* Ajouter un dispositif */}
+      {/* Ajouter un dispositif — IMEI + mot de passe du dispositif (§3) */}
       <BottomSheet t={t} visible={addOpen} onClose={closeAdd}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{transferMode ? tr("list.transferTitle") : tr("list.add")}</Text>
-        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{transferMode ? tr("list.transferDesc") : tr("list.addDesc")}</Text>
-        <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={(v) => { setImei(v); if (transferMode) { setTransferMode(false); setDevicePwd(""); } setAddErr(null); }} />
-        {transferMode ? (
-          <Field t={t} label={tr("list.devicePwd")} icon={KeyRound} placeholder="••••••" secure value={devicePwd} onChangeText={(v) => { setDevicePwd(v); setAddErr(null); }} />
-        ) : (
-          <Field t={t} label={tr("list.nameOpt")} icon={Search} placeholder="Peugeot Expert" value={ename} onChangeText={setEname} />
-        )}
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("list.add")}</Text>
+        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("list.addDesc")}</Text>
+        <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={(v) => { setImei(v); setAddErr(null); }} />
+        <Field t={t} label={tr("list.devicePwd")} icon={KeyRound} placeholder="••••••" secure value={devicePwd} onChangeText={(v) => { setDevicePwd(v); setAddErr(null); }} />
         {addErr ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <AlertTriangle size={14} color={transferMode ? PARKED : ALERT} />
-            <Text style={{ flex: 1, fontSize: 12.5, color: transferMode ? t.text : ALERT, fontFamily: font.body.medium }}>{addErr}</Text>
+            <AlertTriangle size={14} color={ALERT} />
+            <Text style={{ flex: 1, fontSize: 12.5, color: ALERT, fontFamily: font.body.medium }}>{addErr}</Text>
           </View>
         ) : null}
         {(() => {
-          const canSubmit = !!imei.trim() && (!transferMode || !!devicePwd.trim()) && !busy;
-          const label = busy ? tr("list.enrolling") : transferMode ? tr("list.transfer") : tr("list.enroll");
+          const canSubmit = !!imei.trim() && !!devicePwd.trim() && !busy;
           return (
-            <Pressable onPress={enroll} disabled={!canSubmit} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: canSubmit ? ACCENT : hexA(t.text, 0.12) }}>
-              <Text style={{ fontSize: 15, color: canSubmit ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{label}</Text>
+            <Pressable onPress={add} disabled={!canSubmit} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: canSubmit ? ACCENT : hexA(t.text, 0.12) }}>
+              <Text style={{ fontSize: 15, color: canSubmit ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{busy ? tr("list.enrolling") : tr("list.enroll")}</Text>
             </Pressable>
           );
         })()}

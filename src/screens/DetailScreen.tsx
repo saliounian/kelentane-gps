@@ -11,6 +11,7 @@ import {
   Clock,
   Cpu,
   CreditCard,
+  Eye,
   Fence,
   Gauge,
   Hash,
@@ -36,7 +37,6 @@ import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convKm, convSpeed, distUnit, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
-import { useAuth } from "../state/auth";
 import { sendCommand, type CommandType } from "../data/commands";
 import { ApiError, changeDevicePassword, patchVehicle, type VehiclePatch } from "../data/api";
 import { iconForVehicle } from "../icons/vehicleIcons";
@@ -91,8 +91,6 @@ export function DetailScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "Detail">>();
   const { vehicles, refresh } = useVehicles();
   const { overrides } = useIconOverrides();
-  const { session } = useAuth();
-  const uid = session?.user?.id ?? null;
   const v = vehicles.find((x) => x.id === params.vehicleId);
 
   // édition locale (persistance base app = étape 5)
@@ -158,8 +156,9 @@ export function DetailScreen() {
     if (action === "restart") void run("engineResume", "Redémarrage du moteur", password);
   };
 
-  // Mot de passe DU DISPOSITIF (transfert) — modifiable par le propriétaire uniquement.
-  const isOwner = uid != null && v.ownerId === uid;
+  // §4 : les actions (coupure moteur, GPS, zones, mot de passe device) exigent le
+  // rôle 'action'. Un accès 'consultation' est en lecture seule.
+  const canAct = v.accessRole === "action" && v.accessStatus !== "revalidate";
   const saveDevPwd = async () => {
     const pw = newDevPwd.trim();
     if (pw.length < 4) {
@@ -213,26 +212,40 @@ export function DetailScreen() {
 
         {/* commandes */}
         <Label t={t}>{tr("detail.commands")}</Label>
+        {!canAct ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 4, marginTop: -4 }}>
+            <Eye size={13} color={t.sub} />
+            <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("detail.readOnly")}</Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-          <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Lock} label={engineCut ? tr("detail.cutDone") : tr("detail.cut")} danger active={engineCut} onPress={() => setPwdAction("cut")} />
-          </View>
-          <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Power} label={tr("detail.restart")} primary={engineCut} onPress={() => setPwdAction("restart")} />
-          </View>
+          {canAct ? (
+            <>
+              <View style={{ width: "48%" }}>
+                <Cmd t={t} icon={Lock} label={engineCut ? tr("detail.cutDone") : tr("detail.cut")} danger active={engineCut} onPress={() => setPwdAction("cut")} />
+              </View>
+              <View style={{ width: "48%" }}>
+                <Cmd t={t} icon={Power} label={tr("detail.restart")} primary={engineCut} onPress={() => setPwdAction("restart")} />
+              </View>
+            </>
+          ) : null}
           <View style={{ width: "48%" }}>
             <Cmd t={t} icon={Navigation} label={tr("detail.followLive")} primary onPress={() => Linking.openURL(followUrl)} />
           </View>
-          <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={RotateCcw} label={gpsRebooting ? tr("detail.gpsRebooting") : tr("detail.gps")} active={gpsRebooting} onPress={rebootGps} />
-          </View>
-          <View style={{ width: "48%" }}>
-            <Cmd t={t} icon={Fence} label={tr("detail.geofence")} onPress={() => nav.navigate("Geo", { vehicleId: v.id })} />
-          </View>
+          {canAct ? (
+            <View style={{ width: "48%" }}>
+              <Cmd t={t} icon={RotateCcw} label={gpsRebooting ? tr("detail.gpsRebooting") : tr("detail.gps")} active={gpsRebooting} onPress={rebootGps} />
+            </View>
+          ) : null}
+          {canAct ? (
+            <View style={{ width: "48%" }}>
+              <Cmd t={t} icon={Fence} label={tr("detail.geofence")} onPress={() => nav.navigate("Geo", { vehicleId: v.id })} />
+            </View>
+          ) : null}
           <View style={{ width: "48%" }}>
             <Cmd t={t} icon={Gauge} label={tr("detail.km")} onPress={() => nav.navigate("Km", { vehicleId: v.id })} />
           </View>
-          {isOwner ? (
+          {canAct ? (
             <View style={{ width: "48%" }}>
               <Cmd t={t} icon={KeyRound} label={tr("detail.devicePwd")} onPress={() => { setNewDevPwd(""); setDevPwdMsg(null); setDevPwdOpen(true); }} />
             </View>

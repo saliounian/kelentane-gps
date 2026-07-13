@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "../data/supabase";
+import { imeiLogin } from "../data/api";
 import { API_URL } from "../config/env";
 
 export type AuthStatus = "checking" | "out" | "in";
@@ -35,7 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (identifier: string, password: string) => {
-    const email = usernameToEmail(identifier);
+    const id = identifier.trim();
+    // §2/§3.5 : un identifiant purement numérique = IMEI → login routé par l'API
+    // (rate-limité par IMEI). Sinon login classique username/email direct Supabase.
+    if (/^\d{10,17}$/.test(id)) {
+      const { accessToken, refreshToken } = await imeiLogin(id, password);
+      const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (error) throw new Error("Identifiant ou mot de passe incorrect.");
+      return;
+    }
+    const email = usernameToEmail(id);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error("Identifiant ou mot de passe incorrect.");
   };

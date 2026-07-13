@@ -3,8 +3,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
 import { useTranslation } from "react-i18next";
-import { Bell, Check, ChevronRight, Copy, Gauge, Globe, Hash, KeyRound, LogOut, Map, Phone, Share2, UserRound } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, Theme } from "../theme/tokens";
+import { Bell, Check, ChevronRight, Copy, Gauge, Globe, Hash, KeyRound, LogOut, Map, Phone, Share2, UserRound, X } from "lucide-react-native";
+import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, PARKED, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth } from "../state/auth";
@@ -29,6 +29,9 @@ export function ProfileScreen() {
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [byeOpen, setByeOpen] = useState(false);
+  const [pwdBannerHidden, setPwdBannerHidden] = useState(false);
+  // §2 : compte auto-créé par IMEI (email = {IMEI}@kelentane.com) → nudge mdp par défaut.
+  const isImeiAccount = /^\d{10,17}@kelentane\.com$/i.test(session?.user?.email ?? "");
 
   useEffect(() => {
     const uid = session?.user?.id;
@@ -47,6 +50,23 @@ export function ProfileScreen() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 110 }}>
         <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5, paddingHorizontal: 18, marginBottom: 14 }}>{tr("profile.title")}</Text>
+
+        {/* §2 : bandeau non bloquant — changer le mot de passe par défaut (compte IMEI) */}
+        {isImeiAccount && !pwdBannerHidden ? (
+          <View style={{ marginHorizontal: 14, marginBottom: 14, borderRadius: 16, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: hexA(PARKED, 0.12), borderWidth: 1, borderColor: hexA(PARKED, 0.4) }}>
+            <KeyRound size={18} color={PARKED} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 12.5, color: t.text, fontFamily: font.body.semibold }}>{tr("profile.defaultPwdTitle")}</Text>
+              <Text style={{ fontSize: 11.5, color: t.sub, marginTop: 1, fontFamily: font.body.regular }}>{tr("profile.defaultPwdDesc")}</Text>
+            </View>
+            <Pressable onPress={() => setPwdOpen(true)} style={{ paddingVertical: 7, paddingHorizontal: 10, borderRadius: 10, backgroundColor: PARKED }}>
+              <Text style={{ fontSize: 12, color: "#1a1200", fontFamily: font.body.bold }}>{tr("profile.defaultPwdCta")}</Text>
+            </Pressable>
+            <Pressable onPress={() => setPwdBannerHidden(true)} hitSlop={8}>
+              <X size={16} color={t.sub} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* header compte */}
         <View style={{ marginHorizontal: 14, marginBottom: 18, borderRadius: 22, padding: 16, flexDirection: "row", alignItems: "center", gap: 13, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
