@@ -7,7 +7,8 @@ import { ACCENT, ALERT, hexA, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth, suggestUsername } from "../state/auth";
-import { BottomSheet, Field, KMonogram } from "../ui";
+import { rememberedIdentifier } from "../data/authStorage";
+import { BottomSheet, Field, KMonogram, Toggle } from "../ui";
 
 /** Écran de vérification de session (authStatus === "checking"). */
 export function SessionSplash() {
@@ -66,16 +67,25 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
   const { t: tr } = useTranslation();
   const [id, setId] = useState("");
   const [pwd, setPwd] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const canSubmit = id.trim().length > 0 && pwd.trim().length > 0;
+
+  // §1 : pré-remplir l'identifiant + l'état du switch (même après expiration du token).
+  useEffect(() => {
+    rememberedIdentifier().then(({ identifier, remember }) => {
+      if (identifier) setId(identifier);
+      setRemember(remember);
+    });
+  }, []);
 
   const submit = async () => {
     if (!canSubmit || loading) return;
     setError(null);
     setLoading(true);
     try {
-      await signIn(id, pwd);
+      await signIn(id, pwd, remember);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -87,6 +97,10 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
     <>
       <Field t={t} label={tr("auth.identifier")} icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={(v) => { setId(v); setError(null); }} />
       <Field t={t} label={tr("auth.password")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setError(null); }} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: -4, marginBottom: 12, paddingLeft: 2 }}>
+        <Toggle t={t} on={remember} set={setRemember} />
+        <Text style={{ fontSize: 13, color: t.text, fontFamily: font.body.semibold }}>{tr("auth.rememberMe")}</Text>
+      </View>
       {error ? <ErrLine t={t} msg={error} /> : null}
       <PrimaryBtn t={t} label={loading ? tr("auth.loggingIn") : tr("auth.login")} enabled={canSubmit && !loading} onPress={submit} />
       <Pressable onPress={onRegister} style={{ marginTop: 10, padding: 13, borderRadius: 14, alignItems: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>

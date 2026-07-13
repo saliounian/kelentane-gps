@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 import type { Session } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "../data/supabase";
 import { imeiLogin } from "../data/api";
+import { loadRememberFlag, saveIdentifier, setRemember } from "../data/authStorage";
 import { API_URL } from "../config/env";
 
 export type AuthStatus = "checking" | "out" | "in";
@@ -11,7 +12,7 @@ type SignUpInput = { fullName: string; phone: string; username: string; password
 type AuthCtx = {
   status: AuthStatus;
   session: Session | null;
-  signIn: (identifier: string, password: string) => Promise<void>;
+  signIn: (identifier: string, password: string, remember?: boolean) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
   checkUsername: (username: string) => Promise<boolean>; // true = disponible
@@ -24,10 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setStatus(data.session ? "in" : "out");
-    });
+    // §1 : charger le flag « remember » AVANT de restaurer la session (les écritures
+    // de tokens rafraîchis au boot doivent viser le bon storage).
+    loadRememberFlag()
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => {
+        setSession(data.session);
+        setStatus(data.session ? "in" : "out");
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       setStatus(s ? "in" : "out");
@@ -35,8 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signIn = async (identifier: string, password: string) => {
+  const signIn = async (identifier: string, password: string, remember = true) => {
     const id = identifier.trim();
+    // §1 : fixer le mode de persistance AVANT le login, et mémoriser l'identifiant
+    // (jamais le mot de passe) pour le pré-remplissage ultérieur.
+    await setRemember(remember);
+    await saveIdentifier(id);
     // §2/§3.5 : un identifiant purement numérique = IMEI → login routé par l'API
     // (rate-limité par IMEI). Sinon login classique username/email direct Supabase.
     if (/^\d{10,17}$/.test(id)) {

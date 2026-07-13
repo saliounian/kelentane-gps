@@ -1,14 +1,15 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../config/env";
+import { authStorage } from "./authStorage";
 
 /**
  * Client Supabase du mobile — clé PUBLISHABLE uniquement (protégée par RLS).
- * Session persistée via AsyncStorage. Aucun secret ici.
+ * Session persistée via un storage piloté par « Se souvenir de moi » (§1) :
+ * trousseau sécurisé si activé, mémoire éphémère sinon. Aucun secret ici.
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: AsyncStorage,
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

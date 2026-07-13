@@ -181,6 +181,7 @@
     "password": "Password",
     "login": "Sign in",
     "loggingIn": "Signing in…",
+    "rememberMe": "Remember me",
     "wrongCreds": "Incorrect username or password.",
     "forgot": "Forgot password?",
     "haveAccount": "I already have an account — Sign in",

@@ -181,6 +181,7 @@
     "password": "Mot de passe",
     "login": "Se connecter",
     "loggingIn": "Connexion…",
+    "rememberMe": "Se souvenir de moi",
     "wrongCreds": "Identifiant ou mot de passe incorrect.",
     "forgot": "Mot de passe oublié ?",
     "haveAccount": "J'ai déjà un compte — Se connecter",
