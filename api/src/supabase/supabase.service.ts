@@ -44,6 +44,19 @@ export class SupabaseService {
   }
 
   /**
+   * Connexion serveur (client publishable éphémère) → renvoie les tokens de session
+   * pour que le mobile les pose via `setSession`. Sert au login IMEI routé par l'API
+   * (rate-limit). Retourne null si identifiants invalides.
+   */
+  async passwordSignIn(email: string, password: string): Promise<{ accessToken: string; refreshToken: string } | null> {
+    if (!this.url || !this.publishableKey) return null;
+    const c = createClient(this.url, this.publishableKey, { auth: { persistSession: false } });
+    const { data, error } = await c.auth.signInWithPassword({ email, password });
+    if (error || !data.session) return null;
+    return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token };
+  }
+
+  /**
    * Crée un compte auth (service_role, email pré-confirmé car identité synthétique).
    * Retourne l'id créé, ou null si indisponible / déjà existant. Le trigger
    * handle_new_user crée la ligne clients associée.

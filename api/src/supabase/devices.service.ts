@@ -154,6 +154,23 @@ export class DevicesService {
     return (count ?? 0) > 0;
   }
 
+  /** Rate-limit login IMEI (§3.5) : true si l'IMEI est bloqué (5 échecs / 15 min). */
+  async loginBlocked(imei: string): Promise<boolean> {
+    if (!this.supa.client) return false;
+    const { data, error } = await this.supa.client.rpc("device_attempts_blocked", { p_imei: imei });
+    if (error) {
+      this.log.error(`device_attempts_blocked ${imei}: ${error.message}`);
+      return false; // ne bloque pas la connexion si le rate-limit est indisponible
+    }
+    return data === true;
+  }
+
+  /** Incrémente (échec) ou réinitialise (succès) le compteur de tentatives IMEI. */
+  async loginBump(imei: string, reset: boolean): Promise<void> {
+    if (!this.supa.client) return;
+    await this.supa.client.rpc("device_attempts_bump", { p_imei: imei, p_reset: reset });
+  }
+
   /** Change le mot de passe device (propriétaire uniquement, vérifié en base). */
   async setPassword(traccarId: number, ownerId: string, newPassword: string): Promise<boolean> {
     if (!this.supa.client) return false;
