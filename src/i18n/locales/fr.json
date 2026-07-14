@@ -32,6 +32,7 @@
   "map": {
     "summary": "{{count}} véhicules · {{active}} actifs",
     "follow": "Suivi",
+    "following": "Suivi actif",
     "traj": "Trajectoire",
     "more": "Plus",
     "stale": "Périmée"

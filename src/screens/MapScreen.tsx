@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import MapView, { PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, Layers, Navigation, PersonStanding, Power, Route, Search } from "lucide-react-native";
+import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, Layers, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -47,6 +47,9 @@ export function MapScreen() {
   const [mapType, setMapType] = useState<MapType>("standard");
   const [showCard, setShowCard] = useState(true);
   const [restored, setRestored] = useState(false);
+  const [traceOn, setTraceOn] = useState(false); // §3 : tracé temps réel du véhicule suivi
+  const [trace, setTrace] = useState<{ latitude: number; longitude: number }[]>([]);
+  const traceRef = useRef<{ latitude: number; longitude: number; t: number }[]>([]);
   const mapRef = useRef<MapView>(null);
 
   // §1 : restaurer le DERNIER véhicule consulté (popup unique par défaut).
@@ -68,6 +71,29 @@ export function MapScreen() {
     [vehicles, activeId],
   );
   const activeCount = vehicles.filter((v) => v.status !== "offline").length;
+
+  // §3 : fenêtre glissante 2 h du véhicule suivi. En mémoire seule — purgée au
+  // changement de véhicule, à l'arrêt du suivi, et à la sortie/déconnexion (unmount).
+  useEffect(() => {
+    traceRef.current = [];
+    setTrace([]);
+  }, [active?.id, traceOn]);
+
+  useEffect(() => {
+    if (!traceOn || !active?.lat || !active?.lng) return;
+    const pt = {
+      latitude: Number(active.lat),
+      longitude: Number(active.lng),
+      t: active.lastSeen ? new Date(active.lastSeen).getTime() : Date.now(),
+    };
+    const arr = traceRef.current;
+    const last = arr[arr.length - 1];
+    if (last && last.latitude === pt.latitude && last.longitude === pt.longitude) return; // pas bougé
+    const cutoff = Date.now() - 2 * 60 * 60 * 1000; // 2 h
+    const next = [...arr, pt].filter((p) => p.t >= cutoff);
+    traceRef.current = next;
+    setTrace(next.map((p) => ({ latitude: p.latitude, longitude: p.longitude })));
+  }, [active?.lat, active?.lng, active?.lastSeen, traceOn]);
 
   const recenter = (v: VehicleVM | null) => {
     if (!v?.lat || !v?.lng) return;
@@ -104,6 +130,7 @@ export function MapScreen() {
         mapType={mapType}
         showsMyLocationButton={false}
       >
+        {traceOn && trace.length > 1 ? <Polyline coordinates={trace} strokeColor={ACCENT} strokeWidth={4} /> : null}
         {vehicles.map((v) => (
           <VehicleMarker key={v.id} v={v} active={v.id === activeId} onPress={() => select(v)} />
         ))}
@@ -249,16 +276,14 @@ export function MapScreen() {
           </View>
 
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+            {/* §8 : démarre/arrête le TRACÉ temps réel sur cette carte (ne quitte pas
+                l'écran). Distinct de « Suivre l'itinéraire » du Détail (redirection). */}
             <ActionBtn
               t={t}
-              icon={Navigation}
-              label={tr("map.follow")}
-              primary
-              onPress={() =>
-                Linking.openURL(
-                  `https://www.google.com/maps/dir/?api=1&destination=${active.lat},${active.lng}&travelmode=driving`,
-                )
-              }
+              icon={Radar}
+              label={traceOn ? tr("map.following") : tr("map.follow")}
+              primary={traceOn}
+              onPress={() => setTraceOn((o) => !o)}
             />
             <ActionBtn t={t} icon={Route} label={tr("map.traj")} onPress={() => nav.navigate("Traj", { vehicleId: active.id })} />
             <ActionBtn t={t} icon={Grid2x2Plus} label={tr("map.more")} onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
