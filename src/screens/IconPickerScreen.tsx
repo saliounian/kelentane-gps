@@ -21,7 +21,7 @@ export function IconPickerScreen() {
   const { vehicles } = useVehicles();
   const { overrides, setIcon } = useIconOverrides();
   const v = vehicles.find((x) => x.id === params.vehicleId);
-  const color = v?.color ?? t.accent;
+  const color = v?.color ?? t.accentMuted;
   const current = overrides[params.vehicleId] ?? v?.iconKey ?? undefined;
 
   return (

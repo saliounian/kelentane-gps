@@ -12,6 +12,7 @@ export const variant4: Variant = {
     text: "#EAF6FF",
     sub: "rgba(234,246,255,0.55)",
     accent: "#22D3EE",
+    accentMuted: "#22D3EE",
     glass: "rgba(210,235,255,0.06)",
     glassSolid: "rgba(19,32,51,0.82)",
     border: "rgba(210,235,255,0.14)",

@@ -57,7 +57,10 @@ export type Theme = {
   bg: string;
   text: string;
   sub: string;
+  /** Accent PLEIN : fond de bouton, badge, sélection, barre de progression (lime pur). */
   accent: string;
+  /** Accent TEXTE/ICÔNE posé directement sur fond clair : lime foncé lisible (WCAG AA). */
+  accentMuted: string;
   glass: string;
   glassSolid: string;
   border: string;
@@ -66,38 +69,27 @@ export type Theme = {
   map2: string;
 };
 
-/** theme(dark) — tokens exacts Annexe A.2. En clair, `accent` bascule sur un
- *  chartreuse foncé (#4F6B00) pour rester lisible ; le lime pur reste réservé
- *  aux fonds d'action (boutons) avec LIME_ON en texte. */
-export function theme(dark: boolean): Theme {
+/** Thème de PRODUCTION — palette « Blanc Clinique » (clair, mode unique).
+ *  Le mode sombre a été retiré (décision produit). `accent` = lime pur #D4FF17
+ *  réservé aux FONDS pleins (+ LIME_ON en texte) ; `accentMuted` = lime foncé
+ *  #4F6B00 (AA 5.65:1 sur bg) pour tout lime en TEXTE/ICÔNE sur fond clair. */
+export function theme(_dark?: boolean): Theme {
   // [VARIANTES — dev only] Si une variante est active, ses couleurs priment.
-  // Sans variante (_variantTheme === null), comportement de prod inchangé.
+  // Sans variante (_variantTheme === null), rendu prod = Blanc Clinique ci-dessous.
   if (_variantTheme) return _variantTheme;
-  return dark
-    ? {
-        bg: "#06080F",
-        text: "#FFFFFF",
-        sub: "rgba(255,255,255,0.58)",
-        accent: "#D4FF17",
-        glass: "rgba(255,255,255,0.07)",
-        glassSolid: "rgba(20,24,34,0.78)",
-        border: "rgba(255,255,255,0.14)",
-        line: "rgba(255,255,255,0.09)",
-        map1: "#0B1424",
-        map2: "#06080F",
-      }
-    : {
-        bg: "#DFE7F0",
-        text: "#0A0C14",
-        sub: "rgba(10,12,20,0.55)",
-        accent: "#4F6B00",
-        glass: "rgba(255,255,255,0.55)",
-        glassSolid: "rgba(255,255,255,0.86)",
-        border: "rgba(255,255,255,0.85)",
-        line: "rgba(10,12,20,0.08)",
-        map1: "#DFE7F0",
-        map2: "#CFDBE8",
-      };
+  return {
+    bg: "#F4F6FB",
+    text: "#0F1524",
+    sub: "rgba(15,21,36,0.58)",
+    accent: "#D4FF17",
+    accentMuted: "#4F6B00",
+    glass: "rgba(255,255,255,0.65)",
+    glassSolid: "rgba(255,255,255,0.92)",
+    border: "rgba(15,21,36,0.10)",
+    line: "rgba(15,21,36,0.07)",
+    map1: "#E8EDF6",
+    map2: "#DCE4F1",
+  };
 }
 
 /* ---------------------------------------------------------------- VARIANTES (dev only)

@@ -173,7 +173,7 @@ export function AlarmsScreen() {
                               <Text style={{ fontSize: 13.5, color: t.text, fontFamily: font.body.bold }}>{ty?.label ?? an.type}</Text>
                               <Text style={{ fontSize: 12, color: t.sub, marginTop: 2, lineHeight: 17, fontFamily: font.body.regular }}>{an.cause}</Text>
                               <View style={{ alignSelf: "flex-start", marginTop: 8, borderRadius: 999, paddingVertical: 5, paddingHorizontal: 11, backgroundColor: hexA(ACCENT, 0.14) }}>
-                                <Text style={{ fontSize: 12, color: ACCENT, fontFamily: font.body.bold }}>{an.action} →</Text>
+                                <Text style={{ fontSize: 12, color: t.accentMuted, fontFamily: font.body.bold }}>{an.action} →</Text>
                               </View>
                             </View>
                           </View>
@@ -211,8 +211,8 @@ export function AlarmsScreen() {
                   <View style={{ alignItems: "flex-end", gap: 3 }}>
                     <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>{e.time}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                      <MapPin size={11} color={ACCENT} />
-                      <Text style={{ fontSize: 10.5, color: ACCENT, fontFamily: font.body.bold }}>{tr("alarms.see")}</Text>
+                      <MapPin size={11} color={t.accentMuted} />
+                      <Text style={{ fontSize: 10.5, color: t.accentMuted, fontFamily: font.body.bold }}>{tr("alarms.see")}</Text>
                     </View>
                   </View>
                 </Pressable>

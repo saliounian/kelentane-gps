@@ -12,8 +12,8 @@ const variantsMod: typeof import("./variants") | null = __DEV__ ? require("./var
 
 type ThemeCtx = {
   t: Theme;
+  /** Fond sombre ? PROD = false (mode clair unique). Dérivé de la variante en dev. */
   dark: boolean;
-  toggle: () => void;
   /** [dev/preview] id de variante active, ou null = prod. */
   variantId: string | null;
   /** [dev/preview] bascule de variante (null = retour prod). */
@@ -24,27 +24,26 @@ type ThemeCtx = {
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
-/** Fournit le thème + bascule dark/light à toute l'app.
- *  [dev/preview] gère aussi la variante visuelle active (null = prod inchangée). */
-export function ThemeProvider({ children, initialDark = true }: { children: ReactNode; initialDark?: boolean }) {
-  const [dark, setDark] = useState(initialDark);
+/** Fournit le thème « Blanc Clinique » (clair, mode unique) à toute l'app.
+ *  Le mode sombre a été retiré (décision produit) : plus d'état ni de toggle.
+ *  [dev/preview] gère la variante visuelle active (null = prod inchangée). */
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const [variantId, setVariantId] = useState<string | null>(null);
 
   const value = useMemo<ThemeCtx>(() => {
     // [dev] Applique (ou retire) la variante AVANT de lire theme() : mute tokens + polices.
-    // En prod, variantsMod === null → aucun effet, tokens d'origine intacts.
+    // En prod, variantsMod === null → aucun effet, rendu = Blanc Clinique (clair).
     const v = variantsMod ? variantsMod.variantById(variantId) : null;
     if (variantsMod) variantsMod.applyVariant(v);
-    const effectiveDark = v ? v.isDark : dark;
+    const dark = v ? v.isDark : false; // prod : toujours clair
     return {
-      t: theme(effectiveDark),
-      dark: effectiveDark,
-      toggle: () => setDark((d) => !d),
+      t: theme(),
+      dark,
       variantId,
       setVariant: setVariantId,
       variants: variantsMod ? variantsMod.VARIANTS : [],
     };
-  }, [dark, variantId]);
+  }, [variantId]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -139,8 +139,8 @@ export function RemindersGate() {
   return (
     <BottomSheet t={t} visible onClose={later}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 10 }}>
-        <View style={{ width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: hexA(ACCENT, 0.16) }}>
-          {isPhone ? <Phone size={20} color={ACCENT} /> : <Smartphone size={20} color={ACCENT} />}
+        <View style={{ width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: hexA(t.accentMuted, 0.16) }}>
+          {isPhone ? <Phone size={20} color={t.accentMuted} /> : <Smartphone size={20} color={t.accentMuted} />}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 17, color: t.text, fontFamily: font.body.bold }}>
