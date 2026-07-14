@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
+import ClusteredMapView from "react-native-map-clustering";
+import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, Layers, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
@@ -42,6 +44,8 @@ export function MapScreen() {
   const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const focused = useIsFocused();
+  const [locGranted, setLocGranted] = useState(false);
   const { vehicles, error } = useVehicles();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [mapType, setMapType] = useState<MapType>("standard");
@@ -95,6 +99,20 @@ export function MapScreen() {
     setTrace(next.map((p) => ({ latitude: p.latitude, longitude: p.longitude })));
   }, [active?.lat, active?.lng, active?.lastSeen, traceOn]);
 
+  // §4 : position utilisateur UNIQUEMENT écran carte au premier plan (foreground).
+  // On demande la permission à l'ouverture ; le point bleu natif (showsUserLocation)
+  // n'est actif que tant que l'écran est focus → aucun suivi en arrière-plan.
+  useEffect(() => {
+    if (!focused) return;
+    let alive = true;
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (alive) setLocGranted(status === "granted");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [focused]);
+
   const recenter = (v: VehicleVM | null) => {
     if (!v?.lat || !v?.lng) return;
     mapRef.current?.animateToRegion(
@@ -122,19 +140,37 @@ export function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
-      <MapView
-        ref={mapRef}
+      <ClusteredMapView
+        mapRef={(r) => {
+          mapRef.current = r as unknown as MapView;
+        }}
         provider={PROVIDER_DEFAULT}
         style={{ flex: 1 }}
         initialRegion={DAKAR}
         mapType={mapType}
         showsMyLocationButton={false}
+        showsUserLocation={focused && locGranted}
+        clusteringEnabled
+        minPoints={2}
+        radius={48}
+        clusterColor={ACCENT}
+        clusterTextColor={LIME_ON}
       >
         {traceOn && trace.length > 1 ? <Polyline coordinates={trace} strokeColor={ACCENT} strokeWidth={4} /> : null}
-        {vehicles.map((v) => (
-          <VehicleMarker key={v.id} v={v} active={v.id === activeId} onPress={() => select(v)} />
-        ))}
-      </MapView>
+        {/* §2 : chaque marqueur expose `coordinate` (le clustering le lit) ; véhicules
+            sans position exclus. La position exacte est préservée au dé-clustering. */}
+        {vehicles
+          .filter((v) => v.lat && v.lng)
+          .map((v) => (
+            <VehicleMarker
+              key={v.id}
+              v={v}
+              coordinate={{ latitude: Number(v.lat), longitude: Number(v.lng) }}
+              active={v.id === activeId}
+              onPress={() => select(v)}
+            />
+          ))}
+      </ClusteredMapView>
 
       {/* barre de marque */}
       <View

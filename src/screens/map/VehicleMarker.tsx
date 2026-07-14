@@ -5,7 +5,9 @@ import { LIME, hexA } from "../../theme/tokens";
 import { iconForVehicle } from "../../icons/vehicleIcons";
 import type { VehicleVM } from "../../types/vehicle";
 
-type Props = { v: VehicleVM; active: boolean; onPress: () => void };
+// `coordinate` : lu par react-native-map-clustering pour positionner/regrouper le
+// marqueur (le composant conserve par ailleurs sa propre position interne).
+type Props = { v: VehicleVM; active: boolean; onPress: () => void; coordinate?: { latitude: number; longitude: number } };
 
 /**
  * Marqueur véhicule : pastille couleur = STATUT, icône blanche, anneau blanc.

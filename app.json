@@ -34,6 +34,12 @@
       "expo-localization",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Kelentane affiche votre position sur la carte pour vous situer par rapport à vos véhicules. Utilisée uniquement quand l'écran carte est ouvert — jamais en arrière-plan."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": { "usesCleartextTraffic": true }
