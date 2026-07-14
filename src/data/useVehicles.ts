@@ -35,6 +35,11 @@ function mergePositions(prev: VehicleVM[], batch: VehicleVM[]): VehicleVM[] {
             ownerId: ex.ownerId ?? inc.ownerId,
             iconKey: ex.iconKey,
             model: ex.model ?? inc.model,
+            // Accès (§device_access) : porté par le snapshot HTTP/WS, absent des
+            // positions Traccar (toVM → null). Préserver, sinon le premier tick
+            // repasse accessRole à null → tout véhicule gaté « consultation ».
+            accessRole: ex.accessRole ?? inc.accessRole,
+            accessStatus: ex.accessStatus ?? inc.accessStatus,
           }
         : inc,
     );

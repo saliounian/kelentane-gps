@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
-import { Animated, View } from "react-native";
+import { Animated, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { LIME, hexA } from "../../theme/tokens";
+import { font } from "../../theme/fonts";
 import { iconForVehicle } from "../../icons/vehicleIcons";
 import type { VehicleVM } from "../../types/vehicle";
 
@@ -36,44 +37,72 @@ export function VehicleMarker({ v, active, onPress }: Props) {
   const ringOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] });
 
   return (
+    // Label nom TOUJOURS visible (indépendant du popup). anchor.y décalé pour que
+    // le centre de la pastille reste sur la coordonnée malgré le label sous l'icône.
     <Marker
       coordinate={{ latitude: lat, longitude: lng }}
       onPress={onPress}
-      anchor={{ x: 0.5, y: 0.5 }}
+      anchor={{ x: 0.5, y: 0.37 }}
       tracksViewChanges={active}
     >
-      <View style={{ width: 56, height: 56, alignItems: "center", justifyContent: "center" }}>
-        {active ? (
-          <Animated.View
+      <View style={{ alignItems: "center" }}>
+        <View style={{ width: 56, height: 56, alignItems: "center", justifyContent: "center" }}>
+          {active ? (
+            <Animated.View
+              style={{
+                position: "absolute",
+                width: 54,
+                height: 54,
+                borderRadius: 27,
+                borderWidth: 2,
+                borderColor: LIME,
+                opacity: ringOpacity,
+                transform: [{ scale: ringScale }],
+              }}
+            />
+          ) : null}
+          <View
             style={{
-              position: "absolute",
-              width: 54,
-              height: 54,
-              borderRadius: 27,
-              borderWidth: 2,
-              borderColor: LIME,
-              opacity: ringOpacity,
-              transform: [{ scale: ringScale }],
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: v.color,
+              borderWidth: 2.5,
+              borderColor: "#fff",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: v.color,
+              shadowOpacity: 0.6,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
             }}
-          />
-        ) : null}
+          >
+            <Icon size={active ? 20 : 16} color="#fff" />
+          </View>
+        </View>
+        {/* Pastille nom — lisible sur carte claire ET satellite (fond translucide clair). */}
         <View
           style={{
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: v.color,
-            borderWidth: 2.5,
-            borderColor: "#fff",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: v.color,
-            shadowOpacity: 0.6,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
+            marginTop: -1,
+            maxWidth: 132,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 7,
+            backgroundColor: "rgba(255,255,255,0.94)",
+            borderWidth: 0.5,
+            borderColor: "rgba(15,21,36,0.14)",
+            shadowColor: "#000",
+            shadowOpacity: 0.18,
+            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
           }}
         >
-          <Icon size={active ? 20 : 16} color="#fff" />
+          <Text
+            numberOfLines={1}
+            style={{ fontSize: 11, color: "#0F1524", fontFamily: font.body.bold, textAlign: "center" }}
+          >
+            {v.name}
+          </Text>
         </View>
       </View>
     </Marker>
