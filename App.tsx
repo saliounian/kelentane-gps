@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ComponentType } from "react";
 import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -6,6 +6,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./src/i18n";
 import { useAppFonts } from "./src/theme/fonts";
 import { ThemeProvider, useTheme } from "./src/theme/ThemeProvider";
+
+/** [dev/preview] Sélecteur de variante — require() sous __DEV__ : exclu du bundle prod. */
+const DevThemeSwitcher: ComponentType | null = __DEV__
+  ? require("./src/theme/DevThemeSwitcher").DevThemeSwitcher
+  : null;
 import { AuthProvider, useAuth } from "./src/state/auth";
 import { PrefsProvider } from "./src/state/prefs";
 import { IconOverridesProvider } from "./src/state/iconOverrides";
@@ -39,6 +44,8 @@ function Root() {
           <RemindersGate />
         </>
       )}
+      {/* Sélecteur de variante — DEV/PREVIEW UNIQUEMENT (jamais en prod client). */}
+      {DevThemeSwitcher ? <DevThemeSwitcher /> : null}
     </>
   );
 }

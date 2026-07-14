@@ -6,15 +6,20 @@
  * ONLINE / PARKED / OFFLINE / ALERT (anneau, pastille, StatusPill).
  */
 
-/* ---------------------------------------------------------------- MARQUE + STATUTS */
-export const LIME = "#D4FF17"; // accent marque — action / identité / sélection
-export const LIME_ON = "#15210A"; // texte foncé posé SUR le lime
-export const ACCENT = LIME;
+/* ---------------------------------------------------------------- MARQUE + STATUTS
+ * NOTE VARIANTES (dev/preview) : ces tokens sont `let` (au lieu de `const`) pour
+ * pouvoir être remplacés en place par __applyVariant. Grâce aux « live bindings »
+ * ESM, les écrans qui les importent directement voient la nouvelle valeur au
+ * re-render. En prod (aucune variante), ils gardent EXACTEMENT les valeurs ci-dessous
+ * — voir DEFAULTS / __applyVariant(null). */
+export let LIME = "#D4FF17"; // accent marque — action / identité / sélection
+export let LIME_ON = "#15210A"; // texte foncé posé SUR le lime
+export let ACCENT = LIME;
 
-export const ONLINE = "#36D399"; // teal — en ligne / en mouvement
-export const PARKED = "#FFB14E"; // stationné
-export const OFFLINE = "#8E8E93"; // hors ligne
-export const ALERT = "#FF5C5C"; // alarme / anomalie
+export let ONLINE = "#36D399"; // teal — en ligne / en mouvement
+export let PARKED = "#FFB14E"; // stationné
+export let OFFLINE = "#8E8E93"; // hors ligne
+export let ALERT = "#FF5C5C"; // alarme / anomalie
 
 /* Statut véhicule (métier) */
 export type VehicleStatus = "moving" | "online" | "parked" | "offline";
@@ -65,6 +70,9 @@ export type Theme = {
  *  chartreuse foncé (#4F6B00) pour rester lisible ; le lime pur reste réservé
  *  aux fonds d'action (boutons) avec LIME_ON en texte. */
 export function theme(dark: boolean): Theme {
+  // [VARIANTES — dev only] Si une variante est active, ses couleurs priment.
+  // Sans variante (_variantTheme === null), comportement de prod inchangé.
+  if (_variantTheme) return _variantTheme;
   return dark
     ? {
         bg: "#06080F",
@@ -90,6 +98,55 @@ export function theme(dark: boolean): Theme {
         map1: "#DFE7F0",
         map2: "#CFDBE8",
       };
+}
+
+/* ---------------------------------------------------------------- VARIANTES (dev only)
+ * Outil interne de comparaison visuelle. Remplace en place les tokens marque/statut
+ * et le thème renvoyé par theme(). `null` restaure la prod. Retirable : supprimer ce
+ * bloc + le garde-fou dans theme() + le dossier variants/ + le mount __DEV__. */
+const DEFAULTS = {
+  lime: "#D4FF17",
+  limeOn: "#15210A",
+  online: "#36D399",
+  parked: "#FFB14E",
+  offline: "#8E8E93",
+  alert: "#FF5C5C",
+};
+
+let _variantTheme: Theme | null = null;
+
+/** Payload minimal d'une variante (évite l'import circulaire de Variant). */
+export type VariantPayload = {
+  theme: Theme;
+  accent: string;
+  accentText: string;
+  online: string;
+  parked: string;
+  offline: string;
+  alert: string;
+};
+
+/** [dev only] Applique/retire une variante. Mute les live bindings + le thème actif. */
+export function __applyVariant(v: VariantPayload | null): void {
+  if (v) {
+    _variantTheme = v.theme;
+    LIME = v.accent;
+    ACCENT = v.accent;
+    LIME_ON = v.accentText;
+    ONLINE = v.online;
+    PARKED = v.parked;
+    OFFLINE = v.offline;
+    ALERT = v.alert;
+  } else {
+    _variantTheme = null;
+    LIME = DEFAULTS.lime;
+    ACCENT = DEFAULTS.lime;
+    LIME_ON = DEFAULTS.limeOn;
+    ONLINE = DEFAULTS.online;
+    PARKED = DEFAULTS.parked;
+    OFFLINE = DEFAULTS.offline;
+    ALERT = DEFAULTS.alert;
+  }
 }
 
 /* ---------------------------------------------------------------- HELPERS */
