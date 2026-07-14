@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Text, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { Clock, Crosshair, Info, Layers, Navigation, PersonStanding, Route, Search } from "lucide-react-native";
-import { ACCENT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
+import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, Layers, Navigation, PersonStanding, Power, Route, Search } from "lucide-react-native";
+import { ACCENT, ALERT, hexA, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
@@ -19,6 +20,14 @@ import type { RootStackParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
 const DAKAR: Region = { latitude: 14.6928, longitude: -17.4467, latitudeDelta: 0.09, longitudeDelta: 0.09 };
+const LAST_VEHICLE_KEY = "map.lastVehicle";
+const STALE_MS = 6 * 60 * 60 * 1000; // §1 : donnée jugée obsolète au-delà de 6 h sans MAJ
+
+/** Donnée périmée : dernière position trop ancienne (à ne pas confondre avec « récent »). */
+function isStale(lastSeen: string | null): boolean {
+  if (!lastSeen) return true;
+  return Date.now() - new Date(lastSeen).getTime() > STALE_MS;
+}
 
 function fmtDT(iso: string | null): string {
   if (!iso) return "—";
@@ -37,11 +46,22 @@ export function MapScreen() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [mapType, setMapType] = useState<MapType>("standard");
   const [showCard, setShowCard] = useState(true);
+  const [restored, setRestored] = useState(false);
   const mapRef = useRef<MapView>(null);
 
+  // §1 : restaurer le DERNIER véhicule consulté (popup unique par défaut).
   useEffect(() => {
-    if (activeId === null && vehicles.length) setActiveId(vehicles[0].id);
-  }, [vehicles, activeId]);
+    AsyncStorage.getItem(LAST_VEHICLE_KEY).then((v) => {
+      if (v) setActiveId(Number(v));
+      setRestored(true);
+    });
+  }, []);
+
+  // Défaut / garde : si aucun véhicule actif valide → premier de la flotte.
+  useEffect(() => {
+    if (!restored || !vehicles.length) return;
+    setActiveId((cur) => (cur != null && vehicles.some((x) => x.id === cur) ? cur : vehicles[0].id));
+  }, [restored, vehicles]);
 
   const active = useMemo<VehicleVM | null>(
     () => vehicles.find((v) => v.id === activeId) ?? null,
@@ -61,6 +81,7 @@ export function MapScreen() {
     setActiveId(v.id);
     setShowCard(true);
     recenter(v);
+    void AsyncStorage.setItem(LAST_VEHICLE_KEY, String(v.id)); // §1 : mémorise le dernier consulté
   };
 
   // Street View réel de Google, centré sur la position du véhicule sélectionné.
@@ -179,9 +200,15 @@ export function MapScreen() {
               {ActiveIcon ? <ActiveIcon size={20} color={active.color} /> : null}
             </View>
             <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <Text style={{ fontSize: 16, color: t.text, fontFamily: font.body.bold }}>{active.name}</Text>
                 <StatusPill status={active.status} color={active.color} />
+                {isStale(active.lastSeen) ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2, paddingHorizontal: 6, borderRadius: 999, backgroundColor: hexA(ALERT, 0.15) }}>
+                    <AlertTriangle size={10} color={ALERT} />
+                    <Text style={{ fontSize: 9.5, color: ALERT, fontFamily: font.body.bold }}>{tr("map.stale")}</Text>
+                  </View>
+                ) : null}
               </View>
               <Text numberOfLines={1} style={{ fontSize: 12, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
                 {active.addr ?? tr("common.noAddress")}
@@ -211,6 +238,14 @@ export function MapScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
             <Clock size={11} color={t.sub} />
             <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.mono.regular }}>{fmtDT(active.lastSeen)}</Text>
+            {active.acc != null ? (
+              <>
+                <Power size={11} color={active.acc ? ONLINE : OFFLINE} style={{ marginLeft: 8 }} />
+                <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
+                  {tr("detail.acc")} · {active.acc ? tr("common.on") : tr("common.off")}
+                </Text>
+              </>
+            ) : null}
           </View>
 
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
@@ -226,7 +261,7 @@ export function MapScreen() {
               }
             />
             <ActionBtn t={t} icon={Route} label={tr("map.traj")} onPress={() => nav.navigate("Traj", { vehicleId: active.id })} />
-            <ActionBtn t={t} icon={Info} label={tr("map.more")} onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
+            <ActionBtn t={t} icon={Grid2x2Plus} label={tr("map.more")} onPress={() => nav.navigate("Detail", { vehicleId: active.id })} />
           </View>
         </View>
       ) : null}

@@ -11,6 +11,7 @@
     "enRoute": "En route",
     "stopped": "Arrêté",
     "loading": "Chargement…",
+    "retry": "Réessayer",
     "close": "Fermer",
     "on": "Marche",
     "off": "Arrêt",
@@ -32,7 +33,8 @@
     "summary": "{{count}} véhicules · {{active}} actifs",
     "follow": "Suivi",
     "traj": "Trajectoire",
-    "more": "Plus"
+    "more": "Plus",
+    "stale": "Périmée"
   },
   "list": {
     "title": "Véhicules",
@@ -61,7 +63,8 @@
     "cut": "Couper moteur",
     "cutDone": "Moteur coupé",
     "restart": "Redémarrer moteur",
-    "followLive": "Suivi en direct",
+    "followLive": "Suivre l'itinéraire",
+    "liveState": "État & position en direct",
     "gps": "Redémarrer GPS",
     "gpsRebooting": "Redémarrage…",
     "geofence": "Géofence",

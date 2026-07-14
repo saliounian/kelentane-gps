@@ -11,6 +11,7 @@
     "enRoute": "Moving",
     "stopped": "Stopped",
     "loading": "Loading…",
+    "retry": "Retry",
     "close": "Close",
     "on": "On",
     "off": "Off",
@@ -32,7 +33,8 @@
     "summary": "{{count}} vehicles · {{active}} active",
     "follow": "Follow",
     "traj": "Trajectory",
-    "more": "More"
+    "more": "More",
+    "stale": "Stale"
   },
   "list": {
     "title": "Vehicles",
@@ -61,7 +63,8 @@
     "cut": "Cut engine",
     "cutDone": "Engine cut",
     "restart": "Restart engine",
-    "followLive": "Live follow",
+    "followLive": "Follow the route",
+    "liveState": "Live state & location",
     "gps": "Restart GPS",
     "gpsRebooting": "Restarting…",
     "geofence": "Geofence",

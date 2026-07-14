@@ -39,6 +39,7 @@ import { convKm, convSpeed, distUnit, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { sendCommand, type CommandType } from "../data/commands";
 import { ApiError, changeDevicePassword, patchVehicle, type VehiclePatch } from "../data/api";
+import { toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { useIconOverrides } from "../state/iconOverrides";
 import {
@@ -173,7 +174,7 @@ export function DetailScreen() {
       setNewDevPwd("");
       setTimeout(() => setDevPwdOpen(false), 900);
     } catch (e) {
-      setDevPwdMsg((e as Error).message);
+      setDevPwdMsg(toUserMessage(e));
     } finally {
       setSavingDevPwd(false);
     }
@@ -194,22 +195,7 @@ export function DetailScreen() {
           <StatusPill status={v.status} color={v.color} />
         </View>
 
-        {/* metrics */}
-        <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", gap: 8 }}>
-          <Metric t={t} label={tr("common.speed")} value={`${convSpeed(v.speed, units)}`} unit={speedUnit(units, tr)} />
-          <Metric t={t} label={tr("common.battery")} value={v.battery != null ? `${v.battery}` : tr("common.na")} unit={v.battery != null ? "%" : undefined} />
-          <Metric t={t} label={tr("common.tension")} value={v.voltage != null ? `${v.voltage}` : "—"} unit="V" />
-        </Glass>
-
-        {/* info rows */}
-        <Glass t={t} dark={dark} style={{ padding: 4 }}>
-          <Row t={t} icon={MapPin} label={tr("detail.address")} value={v.addr ?? "—"} />
-          <Row t={t} icon={Signal} label={tr("detail.positioning")} value={v.signal} />
-          <Row t={t} icon={Power} label={tr("detail.acc")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
-          <Row t={t} icon={Clock} label={tr("detail.lastPos")} value={fmtDT(v.lastSeen)} mono />
-          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label={tr("detail.update")} value={relAgo(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} last />
-        </Glass>
-
+        {/* §7 : Commandes en premier (métriques/infos déplacées en bas) */}
         {/* commandes */}
         <Label t={t}>{tr("detail.commands")}</Label>
         {!canAct ? (
@@ -282,6 +268,22 @@ export function DetailScreen() {
           <EditableRow t={t} icon={Phone} label={tr("detail.simNumber")} value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
           <Row t={t} icon={Hash} label={tr("detail.iccid")} value={v.iccid ?? "—"} mono />
           <Row t={t} icon={UserRound} label={tr("detail.ownerContact")} value={v.owner ?? "—"} last />
+        </Glass>
+
+        {/* §7 : métriques + position/état déplacés en DERNIER (désormais visibles par
+            défaut sur le popup de la carte d'accueil). Batterie toujours affichée. */}
+        <Label t={t}>{tr("detail.liveState")}</Label>
+        <Glass t={t} dark={dark} style={{ padding: 12, flexDirection: "row", gap: 8 }}>
+          <Metric t={t} label={tr("common.speed")} value={`${convSpeed(v.speed, units)}`} unit={speedUnit(units, tr)} />
+          <Metric t={t} label={tr("common.battery")} value={v.battery != null ? `${v.battery}` : tr("common.na")} unit={v.battery != null ? "%" : undefined} />
+          <Metric t={t} label={tr("common.tension")} value={v.voltage != null ? `${v.voltage}` : "—"} unit="V" />
+        </Glass>
+        <Glass t={t} dark={dark} style={{ padding: 4 }}>
+          <Row t={t} icon={MapPin} label={tr("detail.address")} value={v.addr ?? "—"} />
+          <Row t={t} icon={Signal} label={tr("detail.positioning")} value={v.signal} />
+          <Row t={t} icon={Power} label={tr("detail.acc")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
+          <Row t={t} icon={Clock} label={tr("detail.lastPos")} value={fmtDT(v.lastSeen)} mono />
+          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label={tr("detail.update")} value={relAgo(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} last />
         </Glass>
       </ScrollView>
 
