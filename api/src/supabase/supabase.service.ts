@@ -62,13 +62,41 @@ export class SupabaseService {
    * handle_new_user crée la ligne clients associée.
    */
   async createAuthUser(email: string, password: string): Promise<string | null> {
-    if (!this.client) return null;
-    const { data, error } = await this.client.auth.admin.createUser({ email, password, email_confirm: true });
-    if (error || !data?.user) {
-      this.log.warn(`createAuthUser ${email}: ${error?.message ?? "échec"}`);
+    if (!this.client) {
+      this.log.error(`createAuthUser ${email}: client service_role indisponible (SUPABASE_SERVICE_ROLE_KEY ?)`);
       return null;
     }
-    return data.user.id;
+    const { data, error } = await this.client.auth.admin.createUser({ email, password, email_confirm: true });
+    if (!error && data?.user) return data.user.id;
+
+    // Idempotence : compte déjà présent → résoudre l'id existant plutôt qu'échouer.
+    const code = (error as { code?: string; status?: number } | null)?.code;
+    const already = code === "email_exists" || /already been registered|already exists/i.test(error?.message ?? "");
+    if (already) {
+      const existing = await this.findUserIdByEmail(email);
+      if (existing) return existing;
+    }
+    // Ne pas avaler : erreur réelle remontée en niveau ERROR (visible en prod).
+    this.log.error(`createAuthUser ${email}: ${error?.message ?? "échec inconnu"}${code ? ` [${code}]` : ""}`);
+    return null;
+  }
+
+  /** Résout l'id d'un compte auth par email (idempotence walk-up §2). */
+  async findUserIdByEmail(email: string): Promise<string | null> {
+    if (!this.client) return null;
+    const target = email.trim().toLowerCase();
+    // Base de comptes réduite → pagination courte suffit (perPage max GoTrue = 200).
+    for (let page = 1; page <= 25; page++) {
+      const { data, error } = await this.client.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) {
+        this.log.error(`findUserIdByEmail ${email}: ${error.message}`);
+        return null;
+      }
+      const hit = data.users.find((u) => (u.email ?? "").toLowerCase() === target);
+      if (hit) return hit.id;
+      if (data.users.length < 200) break; // dernière page atteinte
+    }
+    return null;
   }
 
   /** Supprime un compte auth (la ligne clients + accès cascadent via FK). */
