@@ -22,7 +22,11 @@
     "createAccount": "إنشاء حساب",
     "forgot": "هل نسيت كلمة المرور؟",
     "haveAccount": "لديّ حساب — تسجيل الدخول",
-    "wrongCreds": "المعرّف أو كلمة المرور غير صحيحة."
+    "wrongCreds": "المعرّف أو كلمة المرور غير صحيحة.",
+    "showAccounts": "الحسابات المحفوظة",
+    "longPressDelete": "اضغط مطوّلاً على حساب لإزالته",
+    "removeAccountTitle": "إزالة هذا الحساب؟",
+    "removeAccountMsg": "سيُزال «{{id}}» من القائمة على هذا الجهاز."
   },
   "profile": {
     "title": "الملف الشخصي",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutRectangle, Pressable, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT, type Region } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,10 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { fetchRoute, type Range } from "../data/reports";
 import { DateRangeSheet, Glass, GlassButton, Metric } from "../ui";
+import { useVehicles } from "../data/useVehicles";
+import { useIconOverrides } from "../state/iconOverrides";
+import { VehicleGlyph } from "./map/VehicleGlyph";
+import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { RoutePoint } from "../types/reports";
 
@@ -43,7 +47,12 @@ export function TrajectoryScreen() {
   const [customFrom, setCustomFrom] = useState<Date | null>(null);
   const [customTo, setCustomTo] = useState<Date | null>(null);
   const [perso, setPerso] = useState(false);
+  const [mapType, setMapType] = useState<MapType>("standard");
   const mapRef = useRef<MapView>(null);
+  // Icône réelle du véhicule (cohérence carte) : résolue via la liste + override local.
+  const { vehicles } = useVehicles();
+  const { overrides } = useIconOverrides();
+  const veh = vehicles.find((v) => v.id === params.vehicleId);
 
   useEffect(() => {
     let alive = true;
@@ -118,6 +127,7 @@ export function TrajectoryScreen() {
   const idx = pts.length ? Math.min(pts.length - 1, Math.round(progress * (pts.length - 1))) : 0;
   const cur = pts[idx];
   const coords = pts.map((p) => ({ latitude: p.lat, longitude: p.lng }));
+  const glyphV = veh ? { iconKey: overrides[veh.id] ?? veh.iconKey, type: veh.type, color: veh.color } : null;
 
   const summary = useMemo(() => {
     let dist = 0;
@@ -138,11 +148,16 @@ export function TrajectoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       {/* Carte PLEIN ÉCRAN (fond) — POI + zoom/déplacement natifs préservés. */}
-      <MapView ref={mapRef} provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region}>
+      <MapView ref={mapRef} provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
         {coords.length > 1 ? <Polyline coordinates={coords} strokeColor={ONLINE} strokeWidth={4} /> : null}
         {cur ? (
           <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: "#fff", borderWidth: 3, borderColor: ACCENT }} />
+            {/* Vraie icône du véhicule (cohérence app) ; fallback point si pas encore chargée. */}
+            {glyphV ? (
+              <VehicleGlyph v={glyphV} size={34} />
+            ) : (
+              <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: "#fff", borderWidth: 3, borderColor: ACCENT }} />
+            )}
           </Marker>
         ) : null}
       </MapView>
@@ -150,6 +165,11 @@ export function TrajectoryScreen() {
       {/* Retour (overlay haut) */}
       <View style={{ position: "absolute", top: insets.top + 8, left: 14 }}>
         <GlassButton t={t} icon={ChevronLeft} size={38} onPress={() => nav.goBack()} />
+      </View>
+
+      {/* Switch plan/satellite (cohérent avec MapScreen) */}
+      <View style={{ position: "absolute", top: insets.top + 8, right: 14 }}>
+        <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
       </View>
 
       {/* Contrôles en overlay flottant BAS. `box-none` : les gestes carte passent

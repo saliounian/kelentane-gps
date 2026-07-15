@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Hash, KeyRound, Phone, UserRound } from "lucide-react-native";
+import { AlertTriangle, Check, ChevronDown, Hash, KeyRound, Phone, Trash2, UserRound } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth, suggestUsername } from "../state/auth";
-import { rememberedIdentifier } from "../data/authStorage";
+import { addIdentifierToHistory, getIdentifierHistory, rememberedIdentifier, removeIdentifierFromHistory } from "../data/authStorage";
 import { BottomSheet, Field, KMonogram, Toggle } from "../ui";
 
 /** Écran de vérification de session (authStatus === "checking"). */
@@ -63,14 +63,17 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
   const canSubmit = id.trim().length > 0 && pwd.trim().length > 0;
 
-  // §1 : pré-remplir l'identifiant + l'état du switch (même après expiration du token).
+  // §1 : pré-remplir le DERNIER identifiant + l'état du switch, et charger l'historique
+  // multi-comptes (liste déroulante). Jamais le mot de passe.
   useEffect(() => {
     rememberedIdentifier().then(({ identifier, remember }) => {
       if (identifier) setId(identifier);
       setRemember(remember);
     });
+    getIdentifierHistory().then(setHistory);
   }, []);
 
   const submit = async () => {
@@ -79,6 +82,9 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
     setLoading(true);
     try {
       await signIn(id, pwd, remember);
+      // Historique alimenté UNIQUEMENT après une connexion réussie.
+      await addIdentifierToHistory(id);
+      setHistory(await getIdentifierHistory());
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -86,9 +92,29 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
     }
   };
 
+  // Suppression d'un compte de l'historique (appui long → confirmation courte).
+  const confirmDelete = (item: string) => {
+    Alert.alert(tr("auth.removeAccountTitle"), tr("auth.removeAccountMsg", { id: item }), [
+      { text: tr("common.cancel"), style: "cancel" },
+      {
+        text: tr("common.delete"),
+        style: "destructive",
+        onPress: () => void removeIdentifierFromHistory(item).then(setHistory),
+      },
+    ]);
+  };
+
   return (
     <>
-      <Field t={t} label={tr("auth.identifier")} icon={UserRound} placeholder="kelentane-001" value={id} onChangeText={(v) => { setId(v); setError(null); }} />
+      <IdentifierField
+        t={t}
+        label={tr("auth.identifier")}
+        value={id}
+        history={history}
+        onChangeText={(v) => { setId(v); setError(null); }}
+        onSelect={(v) => { setId(v); setError(null); }}
+        onLongPressItem={confirmDelete}
+      />
       <Field t={t} label={tr("auth.password")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setError(null); }} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: -4, marginBottom: 12, paddingLeft: 2 }}>
         <Toggle t={t} on={remember} set={setRemember} />
@@ -211,6 +237,93 @@ function PrimaryBtn({ t, label, enabled, onPress }: { t: ReturnType<typeof useTh
     <Pressable onPress={onPress} disabled={!enabled} style={{ width: "100%", marginTop: 6, padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: enabled ? ACCENT : hexA(t.text, 0.12) }}>
       <Text style={{ fontSize: 15, color: enabled ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{label}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * Champ identifiant avec liste déroulante d'historique multi-comptes (§1).
+ * Tap chevron → ouvre la liste (plus récent en premier). Tap ligne → pré-remplit
+ * SEULEMENT (pas d'auto-login). Appui long → suppression (confirmation courte).
+ */
+function IdentifierField({
+  t,
+  label,
+  value,
+  history,
+  onChangeText,
+  onSelect,
+  onLongPressItem,
+}: {
+  t: ReturnType<typeof useTheme>["t"];
+  label: string;
+  value: string;
+  history: string[];
+  onChangeText: (v: string) => void;
+  onSelect: (v: string) => void;
+  onLongPressItem: (v: string) => void;
+}) {
+  const { t: tr } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const hasHistory = history.length > 0;
+
+  return (
+    <View style={{ marginBottom: 12, zIndex: 20 }}>
+      <Text style={{ fontSize: 12, color: t.sub, marginBottom: 6, paddingLeft: 2, fontFamily: font.body.semibold }}>{label}</Text>
+      <View style={{ height: 48, borderRadius: 14, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+        <UserRound size={18} color={t.sub} />
+        <TextInput
+          value={value}
+          onChangeText={(v) => { onChangeText(v); setOpen(false); }}
+          placeholder="kelentane-001"
+          placeholderTextColor={t.sub}
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={{ flex: 1, color: t.text, fontSize: 15, fontFamily: font.body.regular }}
+        />
+        {hasHistory ? (
+          <Pressable onPress={() => setOpen((o) => !o)} hitSlop={10} accessibilityLabel={tr("auth.showAccounts")}>
+            <ChevronDown size={18} color={t.sub} style={{ transform: [{ rotate: open ? "180deg" : "0deg" }] }} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {open && hasHistory ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 74,
+            left: 0,
+            right: 0,
+            borderRadius: 14,
+            backgroundColor: t.glassSolid,
+            borderWidth: 1,
+            borderColor: t.border,
+            overflow: "hidden",
+            zIndex: 30,
+            elevation: 8,
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+          }}
+        >
+          {history.map((item, i) => (
+            <Pressable
+              key={item}
+              onPress={() => { onSelect(item); setOpen(false); }}
+              onLongPress={() => onLongPressItem(item)}
+              android_ripple={{ color: hexA(t.text, 0.08) }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingVertical: 12, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: t.line }}
+            >
+              <UserRound size={15} color={t.sub} />
+              <Text numberOfLines={1} style={{ flex: 1, color: t.text, fontSize: 14, fontFamily: font.body.medium }}>{item}</Text>
+              <Trash2 size={14} color={t.sub} />
+            </Pressable>
+          ))}
+          <Text style={{ fontSize: 10.5, color: t.sub, paddingHorizontal: 12, paddingVertical: 6, fontFamily: font.body.regular }}>{tr("auth.longPressDelete")}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 

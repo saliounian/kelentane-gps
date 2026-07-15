@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpException, HttpStatus, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpException, HttpStatus, Logger, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
 import { SupabaseService } from "../supabase/supabase.service";
 import { AccountsService } from "../supabase/accounts.service";
@@ -29,11 +29,21 @@ interface AccessBody {
 @Controller("vehicles")
 @UseGuards(AuthGuard)
 export class VehiclesController {
+  private readonly log = new Logger(VehiclesController.name);
+
   constructor(
     private readonly vehicles: VehiclesService,
     private readonly supa: SupabaseService,
     private readonly accounts: AccountsService,
   ) {}
+
+  /** Provisionne le compte walk-up IMEI (§2) en tâche de fond : n'échoue jamais la
+   *  requête, mais toute erreur est remontée en niveau ERROR (plus de silence). */
+  private provisionWalkUp(imei: string): void {
+    void this.accounts.ensureDeviceAccount(imei).catch((e) =>
+      this.log.error(`provisioning walk-up ${imei} échoué: ${(e as Error).message}`),
+    );
+  }
 
   /** GET /vehicles → view-model §6.1, FILTRÉ au périmètre du client. */
   @Get()
@@ -53,8 +63,13 @@ export class VehiclesController {
   @Post("access")
   async addAccess(@Body() body: AccessBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
+    const imei = body.imei.replace(/\s/g, "");
     try {
-      return await this.vehicles.addAccess(user.id, body.imei.replace(/\s/g, ""), body.devicePassword ?? "");
+      const vm = await this.vehicles.addAccess(user.id, imei, body.devicePassword ?? "");
+      // §2 : garantit le compte walk-up IMEI même sur device PRÉ-EXISTANT (chemin
+      // « Ajouter un dispositif » de l'app — cause des 0 comptes IMEI observés).
+      this.provisionWalkUp(imei);
+      return vm;
     } catch (e) {
       throw this.wrap(e);
     }
@@ -70,8 +85,8 @@ export class VehiclesController {
     const imei = body.imei.replace(/\s/g, "");
     try {
       const vm = await this.vehicles.enroll(user.id, imei, body.name);
-      // §2 : compte walk-up IMEI + accès (non bloquant, n'échoue jamais l'enrôlement).
-      await this.accounts.ensureDeviceAccount(imei);
+      // §2 : compte walk-up IMEI + accès. Non bloquant, mais erreur tracée (plus de silence).
+      this.provisionWalkUp(imei);
       return vm;
     } catch (e) {
       throw this.wrap(e);
