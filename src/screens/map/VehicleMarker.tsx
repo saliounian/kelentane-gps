@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Animated, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
-import { LIME, hexA } from "../../theme/tokens";
+import { LIME } from "../../theme/tokens";
 import { font } from "../../theme/fonts";
-import { iconForVehicle } from "../../icons/vehicleIcons";
+import { VehicleGlyph } from "./VehicleGlyph";
 import type { VehicleVM } from "../../types/vehicle";
 
 // `coordinate` : lu par react-native-map-clustering pour positionner/regrouper le
@@ -19,7 +19,6 @@ export function VehicleMarker({ v, active, onPress }: Props) {
   const lat = v.lat ? Number(v.lat) : null;
   const lng = v.lng ? Number(v.lng) : null;
   const pulse = useRef(new Animated.Value(0)).current;
-  const Icon = iconForVehicle(v);
 
   useEffect(() => {
     if (!active) return;
@@ -61,24 +60,7 @@ export function VehicleMarker({ v, active, onPress }: Props) {
               }}
             />
           ) : null}
-          <View
-            style={{
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-              backgroundColor: v.color,
-              borderWidth: 2.5,
-              borderColor: "#fff",
-              alignItems: "center",
-              justifyContent: "center",
-              shadowColor: v.color,
-              shadowOpacity: 0.6,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-            }}
-          >
-            <Icon size={active ? 20 : 16} color="#fff" />
-          </View>
+          <VehicleGlyph v={v} size={size} />
         </View>
         {/* Pastille nom — lisible sur carte claire ET satellite (fond translucide clair). */}
         <View

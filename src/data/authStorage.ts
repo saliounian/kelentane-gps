@@ -95,3 +95,38 @@ export async function rememberedIdentifier(): Promise<{ identifier: string; reme
 export async function saveIdentifier(identifier: string): Promise<void> {
   await AsyncStorage.setItem(IDENTIFIER_KEY, identifier.trim());
 }
+
+/* ---------------------------------------------------------------- HISTORIQUE MULTI-COMPTES
+ * Liste locale des identifiants (IMEI ou username) déjà connectés sur CET appareil,
+ * plus récent en premier. JAMAIS le mot de passe (même règle que « se souvenir de moi »).
+ * Sert uniquement au pré-remplissage via liste déroulante — pas de connexion auto. */
+const HISTORY_KEY = "auth.identifierHistory";
+const MAX_HISTORY = 8;
+
+export async function getIdentifierHistory(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Ajoute (ou remonte) un identifiant en tête d'historique, après login RÉUSSI. */
+export async function addIdentifierToHistory(identifier: string): Promise<void> {
+  const id = identifier.trim();
+  if (!id) return;
+  const prev = await getIdentifierHistory();
+  const next = [id, ...prev.filter((x) => x.toLowerCase() !== id.toLowerCase())].slice(0, MAX_HISTORY);
+  await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+}
+
+/** Retire définitivement un identifiant de l'historique (appui long → suppression). */
+export async function removeIdentifierFromHistory(identifier: string): Promise<string[]> {
+  const id = identifier.trim().toLowerCase();
+  const next = (await getIdentifierHistory()).filter((x) => x.toLowerCase() !== id);
+  await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  return next;
+}

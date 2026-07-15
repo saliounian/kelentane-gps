@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, Layers, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
+import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -18,6 +18,7 @@ import { useVehicles } from "../data/useVehicles";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { ActionBtn, GlassButton, KMonogram, Metric, StatusPill } from "../ui";
 import { VehicleMarker } from "./map/VehicleMarker";
+import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
@@ -201,13 +202,7 @@ export function MapScreen() {
 
       {/* contrôles carte */}
       <View style={{ position: "absolute", right: 14, top: insets.top + 78, gap: 8 }}>
-        <GlassButton
-          t={t}
-          icon={Layers}
-          size={38}
-          color={mapType === "satellite" ? ACCENT : t.text}
-          onPress={() => setMapType((m) => (m === "standard" ? "satellite" : "standard"))}
-        />
+        <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
         <GlassButton t={t} icon={Crosshair} size={38} color={ACCENT} onPress={() => recenter(active)} />
         <GlassButton t={t} icon={PersonStanding} size={38} color={t.text} onPress={() => openStreetView(active)} />
       </View>
