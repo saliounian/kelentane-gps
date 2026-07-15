@@ -54,7 +54,7 @@ export default function App() {
   const [fontsLoaded] = useAppFonts();
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#F4F6FB" }} />;
+    return <View style={{ flex: 1, backgroundColor: "#F4F6F4" }} />;
   }
 
   return (

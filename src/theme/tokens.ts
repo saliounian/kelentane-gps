@@ -1,9 +1,11 @@
 /**
- * Kelentane GPS — design tokens (source de vérité : maquette + handoff Annexe A).
+ * Kelentane GPS — design tokens. Charte v2 « Pin Profond + Charbon » (clair).
  *
- * RÈGLE ABSOLUE : le lime #D4FF17 est réservé marque / action / sélection.
- * Il ne code JAMAIS un statut véhicule. Le statut se lit via
- * ONLINE / PARKED / OFFLINE / ALERT (anneau, pastille, StatusPill).
+ * Signature = vert Pin (700 #0A5C42) pour l'action/marque. Contrairement à la v1
+ * (lime), le vert code AUSSI le statut « en ligne » (Pin 500 #159C6A) — assumé :
+ * le produit parle de « connecté » en vert. Les deux nuances (700 accent / 500
+ * statut) restent distinctes. `LIME`/`LIME_ON` gardent leur nom (compat imports)
+ * mais portent désormais le vert Pin / le texte blanc posé dessus.
  */
 
 /* ---------------------------------------------------------------- MARQUE + STATUTS
@@ -12,14 +14,14 @@
  * ESM, les écrans qui les importent directement voient la nouvelle valeur au
  * re-render. En prod (aucune variante), ils gardent EXACTEMENT les valeurs ci-dessous
  * — voir DEFAULTS / __applyVariant(null). */
-export let LIME = "#D4FF17"; // accent marque — action / identité / sélection
-export let LIME_ON = "#15210A"; // texte foncé posé SUR le lime
+export let LIME = "#0A5C42"; // accent marque — Pin 700 (action / identité / sélection)
+export let LIME_ON = "#FFFFFF"; // texte BLANC posé sur l'accent vert plein
 export let ACCENT = LIME;
 
-export let ONLINE = "#36D399"; // teal — en ligne / en mouvement
-export let PARKED = "#FFB14E"; // stationné
-export let OFFLINE = "#8E8E93"; // hors ligne
-export let ALERT = "#FF5C5C"; // alarme / anomalie
+export let ONLINE = "#159C6A"; // Pin 500 — en ligne / en mouvement
+export let PARKED = "#B8862E"; // ambre doré — stationné / attention
+export let OFFLINE = "#9AA39D"; // charbon 300 — hors ligne
+export let ALERT = "#B23B2E"; // terracotta brique — alarme / anomalie
 
 /* Statut véhicule (métier) */
 export type VehicleStatus = "moving" | "online" | "parked" | "offline";
@@ -69,26 +71,26 @@ export type Theme = {
   map2: string;
 };
 
-/** Thème de PRODUCTION — palette « Blanc Clinique » (clair, mode unique).
- *  Le mode sombre a été retiré (décision produit). `accent` = lime pur #D4FF17
- *  réservé aux FONDS pleins (+ LIME_ON en texte) ; `accentMuted` = lime foncé
- *  #4F6B00 (AA 5.65:1 sur bg) pour tout lime en TEXTE/ICÔNE sur fond clair. */
+/** Thème de PRODUCTION — charte v2 « Pin Profond + Charbon » (clair, mode unique).
+ *  Le mode sombre a été retiré (décision produit). `accent` = Pin 700 #0A5C42
+ *  (fonds pleins + texte BLANC via LIME_ON) ; `accentMuted` = même Pin 700, déjà
+ *  assez foncé pour servir de TEXTE/ICÔNE lisible sur fond clair (Charbon sur Fog). */
 export function theme(_dark?: boolean): Theme {
   // [VARIANTES — dev only] Si une variante est active, ses couleurs priment.
-  // Sans variante (_variantTheme === null), rendu prod = Blanc Clinique ci-dessous.
+  // Sans variante (_variantTheme === null), rendu prod = Pin Profond ci-dessous.
   if (_variantTheme) return _variantTheme;
   return {
-    bg: "#F4F6FB",
-    text: "#0F1524",
-    sub: "rgba(15,21,36,0.58)",
-    accent: "#D4FF17",
-    accentMuted: "#4F6B00",
+    bg: "#F4F6F4", // Fog
+    text: "#101513", // Charbon 900
+    sub: "#5C655F", // Charbon 500
+    accent: "#0A5C42", // Pin 700
+    accentMuted: "#0A5C42", // Pin 700 (texte/icône)
     glass: "rgba(255,255,255,0.65)",
-    glassSolid: "rgba(255,255,255,0.92)",
-    border: "rgba(15,21,36,0.10)",
-    line: "rgba(15,21,36,0.07)",
-    map1: "#E8EDF6",
-    map2: "#DCE4F1",
+    glassSolid: "rgba(255,255,255,0.92)", // Paper
+    border: "#DFE4E1", // Charbon 100
+    line: "#E2E7E3",
+    map1: "#EAEFEA",
+    map2: "#DDE4DE",
   };
 }
 
@@ -97,12 +99,12 @@ export function theme(_dark?: boolean): Theme {
  * et le thème renvoyé par theme(). `null` restaure la prod. Retirable : supprimer ce
  * bloc + le garde-fou dans theme() + le dossier variants/ + le mount __DEV__. */
 const DEFAULTS = {
-  lime: "#D4FF17",
-  limeOn: "#15210A",
-  online: "#36D399",
-  parked: "#FFB14E",
-  offline: "#8E8E93",
-  alert: "#FF5C5C",
+  lime: "#0A5C42",
+  limeOn: "#FFFFFF",
+  online: "#159C6A",
+  parked: "#B8862E",
+  offline: "#9AA39D",
+  alert: "#B23B2E",
 };
 
 let _variantTheme: Theme | null = null;
