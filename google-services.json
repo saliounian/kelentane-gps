@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249871528257",
+    "project_id": "kelentane-gps-1d329",
+    "storage_bucket": "kelentane-gps-1d329.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249871528257:android:541c083c29063d4b7a31c0",
+        "android_client_info": {
+          "package_name": "com.kelentane.gps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDt1D41hmuXZd-qV4LcG2InSbVagkVs6-4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

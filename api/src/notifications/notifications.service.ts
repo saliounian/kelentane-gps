@@ -1,5 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { SupabaseService } from "../supabase/supabase.service";
 
 export interface NotificationPrefs {
@@ -7,55 +6,51 @@ export interface NotificationPrefs {
   types: Record<string, boolean>;
 }
 
+/**
+ * Préférences de notification + jetons push, rattachés au COMPTE RÉEL du client
+ * (client_id = userId issu du JWT). Isolation : chaque utilisateur ne lit/écrit
+ * que ses propres prefs/jetons (RLS self + filtrage explicite par userId ici).
+ */
 @Injectable()
 export class NotificationsService {
   private readonly log = new Logger(NotificationsService.name);
-  private readonly seedOwner: string;
 
-  constructor(
-    private readonly supa: SupabaseService,
-    config: ConfigService,
-  ) {
-    this.seedOwner = config.get<string>("SEED_OWNER_ID") ?? "000000aa-0000-0000-0000-0000000000aa";
-  }
+  constructor(private readonly supa: SupabaseService) {}
 
-  async getPrefs(): Promise<NotificationPrefs> {
+  async getPrefs(userId: string): Promise<NotificationPrefs> {
     if (!this.supa.client) return { armed: true, types: {} };
     const { data } = await this.supa.client
       .from("notification_prefs")
       .select("armed,types")
-      .eq("client_id", this.seedOwner)
+      .eq("client_id", userId)
       .maybeSingle();
     if (!data) return { armed: true, types: {} };
     return { armed: data.armed as boolean, types: (data.types as Record<string, boolean>) ?? {} };
   }
 
-  async patchPrefs(patch: Partial<NotificationPrefs>): Promise<NotificationPrefs> {
+  async patchPrefs(userId: string, patch: Partial<NotificationPrefs>): Promise<NotificationPrefs> {
     if (!this.supa.client) return { armed: patch.armed ?? true, types: patch.types ?? {} };
-    const current = await this.getPrefs();
+    const current = await this.getPrefs(userId);
     const next: NotificationPrefs = {
       armed: patch.armed ?? current.armed,
       types: { ...current.types, ...(patch.types ?? {}) },
     };
     const { error } = await this.supa.client
       .from("notification_prefs")
-      .upsert({ client_id: this.seedOwner, armed: next.armed, types: next.types }, { onConflict: "client_id" });
+      .upsert({ client_id: userId, armed: next.armed, types: next.types }, { onConflict: "client_id" });
     if (error) this.log.error(`patchPrefs: ${error.message}`);
     return next;
   }
 
-  /**
-   * Enregistre un jeton push. L'ENVOI réel (FCM/APNs/Expo) est différé : il
-   * nécessite des credentials projet — voir docs/PLAN.md. Ici on stocke seulement.
-   */
-  async registerToken(token: string, platform: string): Promise<{ stored: boolean }> {
+  /** Enregistre un jeton push pour le compte. L'ENVOI réel est géré par PushService. */
+  async registerToken(userId: string, token: string, platform: string): Promise<{ stored: boolean }> {
     if (!this.supa.client) {
       this.log.warn("registerToken ignoré (Supabase désactivé)");
       return { stored: false };
     }
     const { error } = await this.supa.client
       .from("push_tokens")
-      .upsert({ client_id: this.seedOwner, token, platform }, { onConflict: "token" });
+      .upsert({ client_id: userId, token, platform }, { onConflict: "token" });
     if (error) {
       this.log.error(`registerToken: ${error.message}`);
       return { stored: false };

@@ -3,13 +3,21 @@ import { ConfigService } from "@nestjs/config";
 import WebSocket from "ws";
 import { Subject } from "rxjs";
 import { TraccarService } from "../traccar/traccar.service";
-import type { TraccarDevice, TraccarPosition } from "../traccar/traccar.types";
+import type { TraccarDevice, TraccarPosition, TraccarEvent } from "../traccar/traccar.types";
 import { toVM } from "../vehicles/vehicle.mapper";
 import type { VehicleVM } from "../vehicles/vehicle.vm";
 
 interface SocketFrame {
   devices?: TraccarDevice[];
   positions?: TraccarPosition[];
+  events?: TraccarEvent[];
+}
+
+/** Événement Traccar enrichi de l'identité device (imei + nom) pour le routage push. */
+export interface AlarmEvent {
+  event: TraccarEvent;
+  imei: string;
+  deviceName: string;
 }
 
 /**
@@ -23,6 +31,8 @@ interface SocketFrame {
 export class TraccarRealtimeService implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger(TraccarRealtimeService.name);
   readonly positions$ = new Subject<VehicleVM[]>();
+  /** Événements d'alarme (geofence, overspeed, contact…) pour le pont push. */
+  readonly events$ = new Subject<AlarmEvent>();
 
   private readonly baseUrl: string;
   private readonly user: string;
@@ -115,6 +125,14 @@ export class TraccarRealtimeService implements OnModuleInit, OnModuleDestroy {
         if (d) vms.push(toVM(d, p, now));
       }
       if (vms.length) this.positions$.next(vms);
+    }
+    if (frame.events?.length) {
+      for (const event of frame.events) {
+        const d = this.deviceById.get(event.deviceId);
+        // Device inconnu (pas encore dans la map) → on ignore : pas d'imei pour router.
+        if (!d?.uniqueId) continue;
+        this.events$.next({ event, imei: d.uniqueId, deviceName: d.name ?? d.uniqueId });
+      }
     }
   }
 }
