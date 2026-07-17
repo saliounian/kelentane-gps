@@ -103,7 +103,6 @@ export function ListScreen() {
             <Text style={{ fontSize: 26, color: t.text, fontFamily: font.display.extrabold, letterSpacing: -0.5 }}>
               {tr("list.title")}
             </Text>
-            <Text style={{ fontSize: 13, color: t.sub, fontFamily: font.body.regular }}>{tr("list.subtitle")}</Text>
           </View>
           <Pressable
             onPress={() => openAdd()}
