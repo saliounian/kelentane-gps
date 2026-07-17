@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { KeyboardAvoidingView, LayoutRectangle, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, LayoutRectangle, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -10,7 +10,8 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
 import { createGeofence, deleteGeofence, fetchGeofences, patchGeofence } from "../data/geofences";
-import { Glass, GlassButton, Toggle } from "../ui";
+import { toUserMessage } from "../data/errorMessages";
+import { ErrorState, Glass, GlassButton, Toggle } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { GeofenceVM } from "../types/geofence";
 
@@ -49,7 +50,7 @@ export function GeofenceScreen() {
       setZones(await fetchGeofences(params.vehicleId));
       setError(null);
     } catch (e) {
-      setError((e as Error).message);
+      setError(toUserMessage(e));
     }
   };
   useEffect(() => {
@@ -76,7 +77,7 @@ export function GeofenceScreen() {
       setView("list");
       await load();
     } catch (e) {
-      setError((e as Error).message);
+      setError(toUserMessage(e));
     } finally {
       setSaving(false);
     }
@@ -174,8 +175,10 @@ export function GeofenceScreen() {
           </Glass>
         </View>
 
-        {/* Panneau formulaire flottant, séparé de la carte, remonte avec le clavier. */}
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {/* Panneau formulaire flottant, séparé de la carte, remonte avec le clavier.
+            `padding` sur les 2 plateformes : sur Android `undefined` ne remontait pas
+            le formulaire → le clavier couvrait le nom + les boutons. */}
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={insets.bottom}>
           <View
             style={{
               backgroundColor: t.glassSolid,
@@ -272,7 +275,7 @@ export function GeofenceScreen() {
         <Text style={{ fontSize: 12, color: t.sub, marginTop: -6, fontFamily: font.body.regular }}>{tr("geo.subtitle", { name: v?.name ?? "Véhicule" })}</Text>
 
         {error ? (
-          <Text style={{ color: t.sub, fontSize: 13, marginTop: 10, fontFamily: font.body.regular }}>{error}</Text>
+          <ErrorState t={t} message={error} onRetry={load} />
         ) : zones.length === 0 ? (
           <Glass t={t} dark={dark} style={{ padding: 22, alignItems: "center" }}>
             <Text style={{ color: t.sub, fontSize: 13, fontFamily: font.body.regular }}>{tr("geo.empty")}</Text>

@@ -12,8 +12,9 @@ import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { addVehicleAccess, deleteVehicle } from "../data/api";
+import { toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
-import { BottomSheet, Field, Glass, StatusDot } from "../ui";
+import { BottomSheet, ErrorState, Field, Glass, StatusDot } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
@@ -61,7 +62,7 @@ export function ListScreen() {
       closeAdd();
       refresh();
     } catch (e) {
-      setAddErr((e as Error).message);
+      setAddErr(toUserMessage(e));
     } finally {
       setBusy(false);
     }
@@ -77,7 +78,7 @@ export function ListScreen() {
       setDelPwd("");
       refresh();
     } catch (e) {
-      setDelErr((e as Error).message); // 401 = mot de passe incorrect, garde le sheet
+      setDelErr(toUserMessage(e)); // 401 = mot de passe incorrect, garde le sheet
     } finally {
       setDelBusy(false);
     }
@@ -145,9 +146,7 @@ export function ListScreen() {
         </View>
 
         {error ? (
-          <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>
-            {error}
-          </Text>
+          <ErrorState t={t} message={error} onRetry={refresh} />
         ) : filtered.length === 0 ? (
           <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>
             {loading ? tr("common.loading") : tr("list.empty")}
@@ -217,8 +216,7 @@ export function ListScreen() {
 
       {/* Ajouter un dispositif — IMEI + mot de passe du dispositif (§3) */}
       <BottomSheet t={t} visible={addOpen} onClose={closeAdd}>
-        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 2 }}>{tr("list.add")}</Text>
-        <Text style={{ fontSize: 12, color: t.sub, marginBottom: 14, fontFamily: font.body.regular }}>{tr("list.addDesc")}</Text>
+        <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 14 }}>{tr("list.add")}</Text>
         <Field t={t} label={tr("list.imei")} icon={Hash} placeholder="356 789 123 456 789" mono keyboardType="number-pad" value={imei} onChangeText={(v) => { setImei(v); setAddErr(null); }} />
         <Field t={t} label={tr("list.devicePwd")} icon={KeyRound} placeholder="••••••" secure value={devicePwd} onChangeText={(v) => { setDevicePwd(v); setAddErr(null); }} />
         {addErr ? (

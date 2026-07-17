@@ -54,6 +54,7 @@ export function MapScreen() {
   const [restored, setRestored] = useState(false);
   const [traceOn, setTraceOn] = useState(false); // §3 : tracé temps réel du véhicule suivi
   const [trace, setTrace] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [addrCache, setAddrCache] = useState<Record<number, string>>({}); // adresses reverse-geocodées par véhicule
   const traceRef = useRef<{ latitude: number; longitude: number; t: number }[]>([]);
   const mapRef = useRef<MapView>(null);
 
@@ -113,6 +114,28 @@ export function MapScreen() {
       alive = false;
     };
   }, [focused]);
+
+  // Adresse en clair (reverse geocoding) du véhicule actif quand Traccar n'en
+  // fournit pas. Mémorisée par véhicule pour éviter les appels répétés.
+  useEffect(() => {
+    const v = active;
+    if (!v || v.addr || v.lat == null || v.lng == null || addrCache[v.id]) return;
+    let alive = true;
+    Location.reverseGeocodeAsync({ latitude: Number(v.lat), longitude: Number(v.lng) })
+      .then((res) => {
+        const a = res[0];
+        if (!alive || !a) return;
+        const parts = [a.name ?? a.street, a.district ?? a.subregion, a.city ?? a.region, a.country];
+        const text = Array.from(new Set(parts.filter((p): p is string => !!p))).join(", ");
+        if (text) setAddrCache((c) => ({ ...c, [v.id]: text }));
+      })
+      .catch(() => {
+        /* reverse geocoding indisponible → on garde « adresse indisponible » */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [active, addrCache]);
 
   const recenter = (v: VehicleVM | null) => {
     if (!v?.lat || !v?.lng) return;
@@ -268,8 +291,8 @@ export function MapScreen() {
                   </View>
                 ) : null}
               </View>
-              <Text numberOfLines={1} style={{ fontSize: 12, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
-                {active.addr ?? tr("common.noAddress")}
+              <Text numberOfLines={2} style={{ fontSize: 12, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
+                {active.addr ?? addrCache[active.id] ?? tr("common.noAddress")}
               </Text>
             </View>
           </View>
@@ -296,14 +319,10 @@ export function MapScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
             <Clock size={11} color={t.sub} />
             <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.mono.regular }}>{fmtDT(active.lastSeen)}</Text>
-            {active.acc != null ? (
-              <>
-                <Power size={11} color={active.acc ? ONLINE : OFFLINE} style={{ marginLeft: 8 }} />
-                <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
-                  {tr("detail.acc")} · {active.acc ? tr("common.on") : tr("common.off")}
-                </Text>
-              </>
-            ) : null}
+            <Power size={11} color={active.acc == null ? t.sub : active.acc ? ONLINE : OFFLINE} style={{ marginLeft: 8 }} />
+            <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
+              {tr("detail.acc")} · {active.acc == null ? tr("common.na") : active.acc ? tr("common.on") : tr("common.off")}
+            </Text>
           </View>
 
           <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
