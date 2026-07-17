@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, ChevronDown, Hash, KeyRound, Phone, Trash2, UserRound } from "lucide-react-native";
+import { AlertTriangle, Check, ChevronDown, Hash, KeyRound, Moon, Phone, Sun, Trash2, UserRound } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -24,7 +24,7 @@ export function SessionSplash() {
 
 /** Gate racine quand authStatus === "out" : connexion + auto-inscription. */
 export function AuthScreen() {
-  const { t } = useTheme();
+  const { t, dark, toggle } = useTheme();
   const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const [view, setView] = useState<"login" | "register">("login");
@@ -32,6 +32,14 @@ export function AuthScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
+      {/* Bascule clair / sombre */}
+      <Pressable
+        onPress={toggle}
+        style={{ position: "absolute", top: insets.top + 8, right: 16, zIndex: 10, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}
+      >
+        {dark ? <Sun size={15} color={t.text} /> : <Moon size={15} color={t.text} />}
+      </Pressable>
+
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingHorizontal: 26, paddingVertical: insets.top + 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ alignItems: "center", marginBottom: 30 }}>
           <KMonogram size={48} />

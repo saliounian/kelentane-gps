@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { theme, Theme } from "./tokens";
 import type { Variant } from "./variants";
 
@@ -10,10 +11,14 @@ import type { Variant } from "./variants";
  */
 const variantsMod: typeof import("./variants") | null = __DEV__ ? require("./variants") : null;
 
+const THEME_KEY = "theme.dark"; // choix clair/sombre de l'utilisateur (persisté)
+
 type ThemeCtx = {
   t: Theme;
-  /** Fond sombre ? PROD = false (mode clair unique). Dérivé de la variante en dev. */
+  /** Fond sombre ? Choix utilisateur (toggle). Dérivé de la variante en dev/preview. */
   dark: boolean;
+  /** Bascule clair ↔ sombre (persistée). */
+  toggle: () => void;
   /** [dev/preview] id de variante active, ou null = prod. */
   variantId: string | null;
   /** [dev/preview] bascule de variante (null = retour prod). */
@@ -24,26 +29,40 @@ type ThemeCtx = {
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
-/** Fournit le thème « Blanc Clinique » (clair, mode unique) à toute l'app.
- *  Le mode sombre a été retiré (décision produit) : plus d'état ni de toggle.
- *  [dev/preview] gère la variante visuelle active (null = prod inchangée). */
-export function ThemeProvider({ children }: { children: ReactNode }) {
+/** Fournit le thème « Pin Profond » (clair OU sombre au choix) à toute l'app.
+ *  Défaut clair ; le choix est mémorisé (AsyncStorage).
+ *  [dev/preview] gère aussi la variante visuelle active (null = prod). */
+export function ThemeProvider({ children, initialDark = false }: { children: ReactNode; initialDark?: boolean }) {
+  const [dark, setDark] = useState(initialDark);
   const [variantId, setVariantId] = useState<string | null>(null);
+
+  // Restaure le choix clair/sombre au démarrage.
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_KEY).then((v) => {
+      if (v === "1" || v === "0") setDark(v === "1");
+    });
+  }, []);
 
   const value = useMemo<ThemeCtx>(() => {
     // [dev] Applique (ou retire) la variante AVANT de lire theme() : mute tokens + polices.
-    // En prod, variantsMod === null → aucun effet, rendu = Blanc Clinique (clair).
+    // En prod, variantsMod === null → aucun effet, rendu = Pin Profond (clair/sombre selon `dark`).
     const v = variantsMod ? variantsMod.variantById(variantId) : null;
     if (variantsMod) variantsMod.applyVariant(v);
-    const dark = v ? v.isDark : false; // prod : toujours clair
+    const effectiveDark = v ? v.isDark : dark;
     return {
-      t: theme(),
-      dark,
+      t: theme(effectiveDark),
+      dark: effectiveDark,
+      toggle: () =>
+        setDark((d) => {
+          const next = !d;
+          void AsyncStorage.setItem(THEME_KEY, next ? "1" : "0");
+          return next;
+        }),
       variantId,
       setVariant: setVariantId,
       variants: variantsMod ? variantsMod.VARIANTS : [],
     };
-  }, [variantId]);
+  }, [dark, variantId]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -71,27 +71,42 @@ export type Theme = {
   map2: string;
 };
 
-/** Thème de PRODUCTION — charte v2 « Pin Profond + Charbon » (clair, mode unique).
- *  Le mode sombre a été retiré (décision produit). `accent` = Pin 700 #0A5C42
- *  (fonds pleins + texte BLANC via LIME_ON) ; `accentMuted` = même Pin 700, déjà
- *  assez foncé pour servir de TEXTE/ICÔNE lisible sur fond clair (Charbon sur Fog). */
-export function theme(_dark?: boolean): Theme {
+/** Thème de PRODUCTION — charte v2 « Pin Profond + Charbon », décliné CLAIR + SOMBRE.
+ *  Constante entre les deux modes : `accent` = Pin 700 #0A5C42 pour les FONDS pleins
+ *  (bouton/badge) + texte BLANC (LIME_ON) → contraste élevé dans les deux thèmes.
+ *  Adapté au fond (charte règle 03) : `accentMuted` = accent en TEXTE/ICÔNE sur le
+ *  fond = Pin 700 sur clair (foncé sur Fog), Pin 500 #159C6A sur sombre (Pin 700
+ *  s'écraserait sur le Charbon 900). Statuts identiques dans les deux modes. */
+export function theme(dark = false): Theme {
   // [VARIANTES — dev only] Si une variante est active, ses couleurs priment.
-  // Sans variante (_variantTheme === null), rendu prod = Pin Profond ci-dessous.
   if (_variantTheme) return _variantTheme;
-  return {
-    bg: "#F4F6F4", // Fog
-    text: "#101513", // Charbon 900
-    sub: "#5C655F", // Charbon 500
-    accent: "#0A5C42", // Pin 700
-    accentMuted: "#0A5C42", // Pin 700 (texte/icône)
-    glass: "rgba(255,255,255,0.65)",
-    glassSolid: "rgba(255,255,255,0.92)", // Paper
-    border: "#DFE4E1", // Charbon 100
-    line: "#E2E7E3",
-    map1: "#EAEFEA",
-    map2: "#DDE4DE",
-  };
+  return dark
+    ? {
+        bg: "#101513", // Charbon 900
+        text: "#FFFFFF", // Paper
+        sub: "#9AA39D", // Charbon 300
+        accent: "#0A5C42", // Pin 700 (fond bouton, texte blanc)
+        accentMuted: "#159C6A", // Pin 500 (texte/icône lisible sur sombre)
+        glass: "rgba(255,255,255,0.06)",
+        glassSolid: "rgba(42,48,45,0.92)", // surface sombre alt. (Charbon 700)
+        border: "#2A302D", // Charbon 700
+        line: "rgba(255,255,255,0.08)",
+        map1: "#16201B",
+        map2: "#101513",
+      }
+    : {
+        bg: "#F4F6F4", // Fog
+        text: "#101513", // Charbon 900
+        sub: "#5C655F", // Charbon 500
+        accent: "#0A5C42", // Pin 700
+        accentMuted: "#0A5C42", // Pin 700 (texte/icône sur clair)
+        glass: "rgba(255,255,255,0.65)",
+        glassSolid: "rgba(255,255,255,0.92)", // Paper
+        border: "#DFE4E1", // Charbon 100
+        line: "#E2E7E3",
+        map1: "#EAEFEA",
+        map2: "#DDE4DE",
+      };
 }
 
 /* ---------------------------------------------------------------- VARIANTES (dev only)
