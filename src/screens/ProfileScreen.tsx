@@ -207,10 +207,10 @@ function LanguagePickerSheet({ t, visible, current, onSelect, onClose }: { t: Th
           <Pressable
             key={l}
             onPress={() => onSelect(l)}
-            style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 12, marginBottom: 8, backgroundColor: on ? hexA(ACCENT, 0.12) : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
+            style={{ flexDirection: rtl ? "row-reverse" : "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 14, borderRadius: 12, marginBottom: 8, backgroundColor: on ? hexA(ACCENT, 0.12) : t.glass, borderWidth: 1, borderColor: on ? t.accentMuted : t.border }}
           >
             <Text style={{ flex: 1, fontSize: 15, color: t.text, fontFamily: font.body.semibold, textAlign: rtl ? "right" : "left" }}>{LANG_LABELS[l]}</Text>
-            {on ? <Check size={18} color={ACCENT} /> : null}
+            {on ? <Check size={18} color={t.accentMuted} /> : null}
           </Pressable>
         );
       })}
@@ -270,8 +270,8 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
         <Pressable onPress={copy} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
           <Text style={{ fontSize: 16, letterSpacing: 2, color: t.text, fontFamily: font.mono.semibold }}>{token}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-            {copied ? <Check size={15} color={ONLINE} /> : <Copy size={15} color={ACCENT} />}
-            <Text style={{ fontSize: 12, color: copied ? ONLINE : ACCENT, fontFamily: font.body.bold }}>{copied ? tr("profile.copied") : tr("profile.copy")}</Text>
+            {copied ? <Check size={15} color={ONLINE} /> : <Copy size={15} color={t.accentMuted} />}
+            <Text style={{ fontSize: 12, color: copied ? ONLINE : t.accentMuted, fontFamily: font.body.bold }}>{copied ? tr("profile.copied") : tr("profile.copy")}</Text>
           </View>
         </Pressable>
       ) : null}
@@ -297,7 +297,7 @@ function Card({ t, children }: { t: Theme; children: React.ReactNode }) {
 function IconBox({ t, icon: Icon }: { t: Theme; icon: LucideIcon }) {
   return (
     <View style={{ width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: hexA(ACCENT, 0.16) }}>
-      <Icon size={18} color={ACCENT} />
+      <Icon size={18} color={t.accentMuted} />
     </View>
   );
 }

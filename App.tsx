@@ -54,13 +54,13 @@ export default function App() {
   const [fontsLoaded] = useAppFonts();
 
   if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: "#06080F" }} />;
+    return <View style={{ flex: 1, backgroundColor: "#F4F6F4" }} />;
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider initialDark>
+        <ThemeProvider>
           <PrefsProvider>
             <AuthProvider>
               <IconOverridesProvider>

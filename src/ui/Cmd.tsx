@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import { ACCENT, ALERT, hexA, Theme } from "../theme/tokens";
+import { ALERT, hexA, Theme } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import type { LucideIcon } from "../types/models";
 
@@ -18,8 +18,8 @@ type Props = {
 
 /** Bouton de commande (grille Détail). Maquette : `Cmd`. */
 export function Cmd({ t, icon: Icon, label, onPress, primary, danger, active }: Props) {
-  const base = danger ? ALERT : primary ? ACCENT : t.text;
-  const c = active ? (danger ? ALERT : ACCENT) : base;
+  const base = danger ? ALERT : primary ? t.accentMuted : t.text;
+  const c = active ? (danger ? ALERT : t.accentMuted) : base;
   return (
     <Pressable
       onPress={onPress}

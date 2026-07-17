@@ -32,7 +32,7 @@ export function BarChart({ t, days, selected, onSelect, height = 150 }: Props) {
             onPress={() => onSelect?.(i)}
             style={{ flex: 1, alignItems: "center", gap: 6, height: "100%", justifyContent: "flex-end" }}
           >
-            <Text style={{ fontSize: 9.5, color: on ? ACCENT : t.sub, fontFamily: font.body.bold }}>{d.km}</Text>
+            <Text style={{ fontSize: 9.5, color: on ? t.accentMuted : t.sub, fontFamily: font.body.bold }}>{d.km}</Text>
             <View style={{ width: "100%", height: h, borderRadius: 8, backgroundColor: on ? ACCENT : hexA(ACCENT, 0.2) }} />
             <Text style={{ fontSize: 10, color: on ? t.text : t.sub, fontFamily: on ? font.body.bold : font.body.regular }}>
               {weekday(d.date)}

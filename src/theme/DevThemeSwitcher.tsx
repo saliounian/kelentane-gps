@@ -73,7 +73,7 @@ export function DevThemeSwitcher() {
             <Row
               name="Prod (défaut)"
               tagline="Thème de production — aucune surcharge"
-              swatches={["#06080F", "#D4FF17", "#FFFFFF"]}
+              swatches={["#F4F6F4", "#0A5C42", "#101513"]}
               active={variantId === null}
               onPress={() => {
                 setVariant(null);

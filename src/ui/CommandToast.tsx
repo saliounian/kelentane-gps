@@ -23,6 +23,8 @@ export function CommandToast({ t, cmd, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const meta = META[cmd.state];
   const Icon = meta.icon;
+  // Lime pur illisible sur fond clair → variante foncée pour l'icône « envoi ».
+  const color = cmd.state === "pending" ? t.accentMuted : meta.color;
   const spin = useRef(new Animated.Value(0)).current;
 
   // auto-close une fois résolu (assez long pour lire, pas trop)
@@ -82,12 +84,12 @@ export function CommandToast({ t, cmd, onClose }: Props) {
             borderRadius: 13,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: hexA(meta.color, 0.16),
+            backgroundColor: hexA(color, 0.16),
             // `0deg` explicite hors rotation : évite le résidu natif (check penché).
             transform: [{ rotate: meta.spin ? rotate : "0deg" }],
           }}
         >
-          <Icon size={24} color={meta.color} />
+          <Icon size={24} color={color} />
         </Animated.View>
         <View style={{ flexShrink: 1 }}>
           <Text style={{ fontSize: 15.5, color: t.text, fontFamily: font.body.bold }}>

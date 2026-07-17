@@ -1,9 +1,11 @@
 /**
- * Kelentane GPS — design tokens (source de vérité : maquette + handoff Annexe A).
+ * Kelentane GPS — design tokens. Charte v2 « Pin Profond + Charbon » (clair).
  *
- * RÈGLE ABSOLUE : le lime #D4FF17 est réservé marque / action / sélection.
- * Il ne code JAMAIS un statut véhicule. Le statut se lit via
- * ONLINE / PARKED / OFFLINE / ALERT (anneau, pastille, StatusPill).
+ * Signature = vert Pin (700 #0A5C42) pour l'action/marque. Contrairement à la v1
+ * (lime), le vert code AUSSI le statut « en ligne » (Pin 500 #159C6A) — assumé :
+ * le produit parle de « connecté » en vert. Les deux nuances (700 accent / 500
+ * statut) restent distinctes. `LIME`/`LIME_ON` gardent leur nom (compat imports)
+ * mais portent désormais le vert Pin / le texte blanc posé dessus.
  */
 
 /* ---------------------------------------------------------------- MARQUE + STATUTS
@@ -12,14 +14,14 @@
  * ESM, les écrans qui les importent directement voient la nouvelle valeur au
  * re-render. En prod (aucune variante), ils gardent EXACTEMENT les valeurs ci-dessous
  * — voir DEFAULTS / __applyVariant(null). */
-export let LIME = "#D4FF17"; // accent marque — action / identité / sélection
-export let LIME_ON = "#15210A"; // texte foncé posé SUR le lime
+export let LIME = "#0A5C42"; // accent marque — Pin 700 (action / identité / sélection)
+export let LIME_ON = "#FFFFFF"; // texte BLANC posé sur l'accent vert plein
 export let ACCENT = LIME;
 
-export let ONLINE = "#36D399"; // teal — en ligne / en mouvement
-export let PARKED = "#FFB14E"; // stationné
-export let OFFLINE = "#8E8E93"; // hors ligne
-export let ALERT = "#FF5C5C"; // alarme / anomalie
+export let ONLINE = "#159C6A"; // Pin 500 — en ligne / en mouvement
+export let PARKED = "#B8862E"; // ambre doré — stationné / attention
+export let OFFLINE = "#9AA39D"; // charbon 300 — hors ligne
+export let ALERT = "#B23B2E"; // terracotta brique — alarme / anomalie
 
 /* Statut véhicule (métier) */
 export type VehicleStatus = "moving" | "online" | "parked" | "offline";
@@ -57,7 +59,10 @@ export type Theme = {
   bg: string;
   text: string;
   sub: string;
+  /** Accent PLEIN : fond de bouton, badge, sélection, barre de progression (lime pur). */
   accent: string;
+  /** Accent TEXTE/ICÔNE posé directement sur fond clair : lime foncé lisible (WCAG AA). */
+  accentMuted: string;
   glass: string;
   glassSolid: string;
   border: string;
@@ -66,37 +71,41 @@ export type Theme = {
   map2: string;
 };
 
-/** theme(dark) — tokens exacts Annexe A.2. En clair, `accent` bascule sur un
- *  chartreuse foncé (#4F6B00) pour rester lisible ; le lime pur reste réservé
- *  aux fonds d'action (boutons) avec LIME_ON en texte. */
-export function theme(dark: boolean): Theme {
+/** Thème de PRODUCTION — charte v2 « Pin Profond + Charbon », décliné CLAIR + SOMBRE.
+ *  Constante entre les deux modes : `accent` = Pin 700 #0A5C42 pour les FONDS pleins
+ *  (bouton/badge) + texte BLANC (LIME_ON) → contraste élevé dans les deux thèmes.
+ *  Adapté au fond (charte règle 03) : `accentMuted` = accent en TEXTE/ICÔNE sur le
+ *  fond = Pin 700 sur clair (foncé sur Fog), Pin 500 #159C6A sur sombre (Pin 700
+ *  s'écraserait sur le Charbon 900). Statuts identiques dans les deux modes. */
+export function theme(dark = false): Theme {
   // [VARIANTES — dev only] Si une variante est active, ses couleurs priment.
-  // Sans variante (_variantTheme === null), comportement de prod inchangé.
   if (_variantTheme) return _variantTheme;
   return dark
     ? {
-        bg: "#06080F",
-        text: "#FFFFFF",
-        sub: "rgba(255,255,255,0.58)",
-        accent: "#D4FF17",
-        glass: "rgba(255,255,255,0.07)",
-        glassSolid: "rgba(20,24,34,0.78)",
-        border: "rgba(255,255,255,0.14)",
-        line: "rgba(255,255,255,0.09)",
-        map1: "#0B1424",
-        map2: "#06080F",
+        bg: "#101513", // Charbon 900
+        text: "#FFFFFF", // Paper
+        sub: "#9AA39D", // Charbon 300
+        accent: "#0A5C42", // Pin 700 (fond bouton, texte blanc)
+        accentMuted: "#159C6A", // Pin 500 (texte/icône lisible sur sombre)
+        glass: "rgba(255,255,255,0.06)",
+        glassSolid: "rgba(42,48,45,0.92)", // surface sombre alt. (Charbon 700)
+        border: "#2A302D", // Charbon 700
+        line: "rgba(255,255,255,0.08)",
+        map1: "#16201B",
+        map2: "#101513",
       }
     : {
-        bg: "#DFE7F0",
-        text: "#0A0C14",
-        sub: "rgba(10,12,20,0.55)",
-        accent: "#4F6B00",
-        glass: "rgba(255,255,255,0.55)",
-        glassSolid: "rgba(255,255,255,0.86)",
-        border: "rgba(255,255,255,0.85)",
-        line: "rgba(10,12,20,0.08)",
-        map1: "#DFE7F0",
-        map2: "#CFDBE8",
+        bg: "#F4F6F4", // Fog
+        text: "#101513", // Charbon 900
+        sub: "#5C655F", // Charbon 500
+        accent: "#0A5C42", // Pin 700
+        accentMuted: "#0A5C42", // Pin 700 (texte/icône sur clair)
+        glass: "rgba(255,255,255,0.65)",
+        glassSolid: "rgba(255,255,255,0.92)", // Paper
+        border: "#DFE4E1", // Charbon 100
+        line: "#E2E7E3",
+        map1: "#EAEFEA",
+        map2: "#DDE4DE",
       };
 }
 
@@ -105,12 +114,12 @@ export function theme(dark: boolean): Theme {
  * et le thème renvoyé par theme(). `null` restaure la prod. Retirable : supprimer ce
  * bloc + le garde-fou dans theme() + le dossier variants/ + le mount __DEV__. */
 const DEFAULTS = {
-  lime: "#D4FF17",
-  limeOn: "#15210A",
-  online: "#36D399",
-  parked: "#FFB14E",
-  offline: "#8E8E93",
-  alert: "#FF5C5C",
+  lime: "#0A5C42",
+  limeOn: "#FFFFFF",
+  online: "#159C6A",
+  parked: "#B8862E",
+  offline: "#9AA39D",
+  alert: "#B23B2E",
 };
 
 let _variantTheme: Theme | null = null;

@@ -203,7 +203,7 @@ export function MapScreen() {
       {/* contrôles carte */}
       <View style={{ position: "absolute", right: 14, top: insets.top + 78, gap: 8 }}>
         <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
-        <GlassButton t={t} icon={Crosshair} size={38} color={ACCENT} onPress={() => recenter(active)} />
+        <GlassButton t={t} icon={Crosshair} size={38} color={t.accentMuted} onPress={() => recenter(active)} />
         <GlassButton t={t} icon={PersonStanding} size={38} color={t.text} onPress={() => openStreetView(active)} />
       </View>
 
@@ -288,7 +288,7 @@ export function MapScreen() {
               t={t}
               label={tr("common.state")}
               value={active.speed > 0 ? tr("common.enRoute") : tr("common.stopped")}
-              valueColor={active.speed > 0 ? ACCENT : PARKED}
+              valueColor={active.speed > 0 ? t.accentMuted : PARKED}
               small
             />
           </View>

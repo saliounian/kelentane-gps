@@ -25,7 +25,8 @@ type Props = {
 export function PasswordSheet({ t, visible, title, confirmLabel, onConfirm, onClose, danger, note }: Props) {
   const { t: tr } = useTranslation();
   const [pwd, setPwd] = useState("");
-  const c = danger ? ALERT : ACCENT;
+  const c = danger ? ALERT : ACCENT; // fond du bouton (lime plein + LIME_ON)
+  const iconColor = danger ? ALERT : t.accentMuted; // icône/chip sur fond clair (lime foncé)
 
   const confirm = () => {
     onConfirm(pwd);
@@ -35,8 +36,8 @@ export function PasswordSheet({ t, visible, title, confirmLabel, onConfirm, onCl
   return (
     <BottomSheet t={t} visible={visible} onClose={onClose}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: hexA(c, 0.16) }}>
-          {danger ? <Lock size={20} color={c} /> : <Power size={20} color={c} />}
+        <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: hexA(iconColor, 0.16) }}>
+          {danger ? <Lock size={20} color={iconColor} /> : <Power size={20} color={iconColor} />}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold }}>{title}</Text>

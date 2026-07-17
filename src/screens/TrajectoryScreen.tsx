@@ -195,7 +195,7 @@ export function TrajectoryScreen() {
           {/* lecture live */}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("traj.playback")}</Text>
-            <Text style={{ fontSize: 22, color: cur && cur.speed > 0 ? ACCENT : t.sub, fontFamily: font.mono.semibold }}>
+            <Text style={{ fontSize: 22, color: cur && cur.speed > 0 ? t.accentMuted : t.sub, fontFamily: font.mono.semibold }}>
               {cur?.speed ?? 0}
               <Text style={{ fontSize: 11, color: t.sub }}> km/h</Text>
             </Text>
@@ -208,7 +208,7 @@ export function TrajectoryScreen() {
                 <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.mono.regular }}>{new Date(cur.time).toLocaleString("fr-FR")}</Text>
               </View>
               <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
-                <MapPin size={13} color={cur.speed > 0 ? ACCENT : t.sub} />
+                <MapPin size={13} color={cur.speed > 0 ? t.accentMuted : t.sub} />
                 <Text style={{ flex: 1, fontSize: 12.5, color: t.text, lineHeight: 18, fontFamily: font.body.regular }}>{cur.addr ?? `${cur.lat.toFixed(5)}, ${cur.lng.toFixed(5)}`}</Text>
               </View>
             </View>
@@ -237,7 +237,7 @@ export function TrajectoryScreen() {
               onPress={() => setSpeedMode((m) => (m === "Lent" ? "Moyen" : m === "Moyen" ? "Vite" : "Lent"))}
               style={{ paddingHorizontal: 10, height: 32, borderRadius: 10, justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}
             >
-              <Text style={{ fontSize: 12, color: ACCENT, fontFamily: font.body.bold }}>{speedMode === "Lent" ? tr("traj.slow") : speedMode === "Moyen" ? tr("traj.medium") : tr("traj.fast")}</Text>
+              <Text style={{ fontSize: 12, color: t.accentMuted, fontFamily: font.body.bold }}>{speedMode === "Lent" ? tr("traj.slow") : speedMode === "Moyen" ? tr("traj.medium") : tr("traj.fast")}</Text>
             </Pressable>
             <GlassButton t={t} icon={RotateCcw} onPress={() => (setProgress(0), setPlaying(true))} />
           </View>

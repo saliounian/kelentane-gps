@@ -32,6 +32,7 @@ export function AuthScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
+      {/* Bascule clair / sombre */}
       <Pressable
         onPress={toggle}
         style={{ position: "absolute", top: insets.top + 8, right: 16, zIndex: 10, width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}

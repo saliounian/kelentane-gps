@@ -40,7 +40,7 @@ export function RootNavigator() {
   const base = dark ? DarkTheme : DefaultTheme;
   const navTheme: NavTheme = {
     ...base,
-    colors: { ...base.colors, background: t.bg, card: t.bg, text: t.text, primary: t.accent, border: t.border },
+    colors: { ...base.colors, background: t.bg, card: t.bg, text: t.text, primary: t.accentMuted, border: t.border },
   };
   return (
     <NavigationContainer theme={navTheme}>

@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { BarChart3, Bell, Home, List, User } from "lucide-react-native";
-import { ACCENT } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import type { LucideIcon } from "../types/models";
@@ -64,11 +63,11 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
               onPress={onPress}
               style={{ flex: 1, alignItems: "center", gap: 3, paddingVertical: 4 }}
             >
-              <Icon size={21} color={on ? ACCENT : t.sub} strokeWidth={on ? 2.4 : 2} />
+              <Icon size={21} color={on ? t.accentMuted : t.sub} strokeWidth={on ? 2.4 : 2} />
               <Text
                 style={{
                   fontSize: 9.5,
-                  color: on ? ACCENT : t.sub,
+                  color: on ? t.accentMuted : t.sub,
                   fontFamily: on ? font.body.bold : font.body.medium,
                 }}
               >
