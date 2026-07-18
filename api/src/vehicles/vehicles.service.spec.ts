@@ -1,6 +1,6 @@
 import { HttpException } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
-import type { AccessService } from "../supabase/access.service";
+import { AccessService, type AccessRole, type AllowedSet } from "../supabase/access.service";
 
 const IMEI = "868720065811725";
 
@@ -125,22 +125,32 @@ describe("VehiclesService.addAccess (ajout coexistant §3)", () => {
   });
 });
 
-describe("VehiclesService.patch (owner_id jamais une fixture)", () => {
-  it("transmet le vrai userId authentifié à upsertByImei", async () => {
-    const traccar = {
-      getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }),
+describe("VehiclesService.patch — écriture métadonnées gatée 'action' (H1)", () => {
+  function makeAccess(role: AccessRole): AccessService {
+    const access = new AccessService({} as never);
+    const set: AllowedSet = {
+      imeis: new Set([IMEI]),
+      traccarIds: new Set([15]),
+      rowIds: new Set(),
+      role: new Map([[IMEI, role]]),
+      roleByRowId: new Map(),
     };
+    jest.spyOn(access, "allowed").mockResolvedValue(set);
+    return access;
+  }
+
+  it("consultation → 403 (aucune écriture)", async () => {
+    const traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }) };
+    const devices = { upsertByImei: jest.fn() };
+    const service = new VehiclesService(traccar as never, devices as never, makeAccess("consultation"));
+    expect(await statusOf(service.patch(15, { name: "Young" }, "u1"))).toBe(403);
+    expect(devices.upsertByImei).not.toHaveBeenCalled();
+  });
+
+  it("action → réussit et transmet le vrai userId authentifié à upsertByImei", async () => {
+    const traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }) };
     const devices = { upsertByImei: jest.fn().mockResolvedValue({ owner_id: "real-user" }) };
-    const access = {
-      allowed: jest.fn().mockResolvedValue({
-        imeis: new Set([IMEI]),
-        traccarIds: new Set(),
-        rowIds: new Set(),
-        role: new Map([[IMEI, "action"]]),
-      }),
-      assertImei: jest.fn(),
-    };
-    const service = new VehiclesService(traccar as never, devices as never, access as never);
+    const service = new VehiclesService(traccar as never, devices as never, makeAccess("action"));
 
     await service.patch(15, { name: "Young" }, "real-user");
 

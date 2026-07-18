@@ -30,13 +30,17 @@ export class GeofencesService {
     return this.supa.client;
   }
 
-  /** Résout un véhicule (id Traccar) → { traccarId, deviceRowId } après contrôle d'accès. */
-  private async resolveDevice(vehicleId: number, userId: string): Promise<{ traccarId: number; deviceRowId: string }> {
+  /**
+   * Résout un véhicule (id Traccar) → { traccarId, deviceRowId } après contrôle d'accès.
+   * `requireAction` = true pour les écritures (rôle 'action' exigé) ; false = lecture (accès actif suffit).
+   */
+  private async resolveDevice(vehicleId: number, userId: string, requireAction = false): Promise<{ traccarId: number; deviceRowId: string }> {
     const { devices } = await this.traccar.getFleet();
     const d = devices.find((x) => x.id === vehicleId);
     if (!d) throw new NotFoundException("Véhicule introuvable");
     const allowed = await this.access.allowed(userId);
-    this.access.assertImei(allowed, d.uniqueId);
+    if (requireAction) this.access.assertAction(allowed, d.uniqueId);
+    else this.access.assertImei(allowed, d.uniqueId);
     const row = await this.devices.upsertByImei(d.uniqueId, d.id, userId, {});
     if (!row) throw new ServiceUnavailableException("Base app indisponible");
     return { traccarId: d.id, deviceRowId: row.id };
@@ -56,7 +60,7 @@ export class GeofencesService {
 
   async create(vehicleId: number, body: CreateGeofenceBody, userId: string): Promise<GeofenceVM> {
     const client = this.requireSupa();
-    const { traccarId, deviceRowId } = await this.resolveDevice(vehicleId, userId);
+    const { traccarId, deviceRowId } = await this.resolveDevice(vehicleId, userId, true); // écriture → rôle 'action'
 
     const geo = await this.traccar.createGeofence(body.name, areaToWkt(body.area));
     await this.traccar.linkGeofence(traccarId, geo.id); // active la règle enter/exit
@@ -81,7 +85,7 @@ export class GeofencesService {
   async patch(geofenceId: string, patch: { enabled?: boolean; name?: string }, userId: string): Promise<GeofenceVM> {
     const client = this.requireSupa();
     const row = await this.getRow(geofenceId);
-    await this.assertRowAccess(userId, row.device_id);
+    await this.assertRowAction(userId, row.device_id);
 
     // Activer/désactiver = lier/délier la permission Traccar (la règle s'arrête).
     if (patch.enabled !== undefined && patch.enabled !== row.enabled && row.traccar_geofence_id) {
@@ -105,7 +109,7 @@ export class GeofencesService {
   async remove(geofenceId: string, userId: string): Promise<{ deleted: true }> {
     const client = this.requireSupa();
     const row = await this.getRow(geofenceId);
-    await this.assertRowAccess(userId, row.device_id);
+    await this.assertRowAction(userId, row.device_id);
     if (row.traccar_geofence_id) {
       try {
         await this.traccar.deleteGeofence(row.traccar_geofence_id);
@@ -118,10 +122,16 @@ export class GeofencesService {
     return { deleted: true };
   }
 
-  /** Vérifie que le device de la géofence appartient au périmètre du client. */
-  private async assertRowAccess(userId: string, deviceRowId: string): Promise<void> {
+  /**
+   * Écriture sur une géofence : le device doit être dans le périmètre du client ET
+   * l'accès doit être en rôle 'action' (une consultation ne peut pas modifier/supprimer).
+   */
+  private async assertRowAction(userId: string, deviceRowId: string): Promise<void> {
     const allowed = await this.access.allowed(userId);
     if (!allowed.rowIds.has(deviceRowId)) throw new ForbiddenException("Accès refusé à cette géofence");
+    if (allowed.roleByRowId.get(deviceRowId) !== "action") {
+      throw new ForbiddenException("Action non autorisée (accès en consultation)");
+    }
   }
 
   private async getRow(id: string): Promise<GeoRow> {

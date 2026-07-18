@@ -32,13 +32,13 @@ export class VehiclesService {
     });
   }
 
-  /** PATCH champs métier. Vérifie l'accès ACTIF puis résout l'IMEI. */
+  /** PATCH champs métier = écriture → rôle 'action' requis (consultation = lecture seule). */
   async patch(id: number, patch: DevicePatch, userId: string): Promise<VehicleVM> {
     const { devices, positions } = await this.traccar.getFleet();
     const d = devices.find((x) => x.id === id);
     if (!d) throw new NotFoundException("Véhicule introuvable");
     const allowed = await this.access.allowed(userId);
-    this.access.assertImei(allowed, d.uniqueId);
+    this.access.assertAction(allowed, d.uniqueId);
     const row = await this.devices.upsertByImei(d.uniqueId, d.id, userId, patch);
     const pos = positions.find((p) => p.deviceId === id);
     const a = allowed.role?.get(d.uniqueId) ?? null;

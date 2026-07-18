@@ -9,6 +9,7 @@ export interface AllowedSet {
   traccarIds: Set<number>;
   rowIds: Set<string>;
   role: Map<string, AccessRole>; // rôle par imei (accès actif)
+  roleByRowId: Map<string, AccessRole>; // rôle par device_id (accès actif) — gardes par ligne (géofences)
 }
 
 interface AccessRow {
@@ -56,7 +57,7 @@ export class AccessService {
 
   /** Périmètre ACTIF — sert de garde pour commandes / patch / rapports. */
   async allowed(userId: string): Promise<AllowedSet> {
-    const out: AllowedSet = { imeis: new Set(), traccarIds: new Set(), rowIds: new Set(), role: new Map() };
+    const out: AllowedSet = { imeis: new Set(), traccarIds: new Set(), rowIds: new Set(), role: new Map(), roleByRowId: new Map() };
     for (const r of await this.loadAccess(userId)) {
       if (r.status !== "active") continue;
       if (r.imei) {
@@ -65,6 +66,7 @@ export class AccessService {
       }
       if (r.traccarId != null) out.traccarIds.add(r.traccarId);
       out.rowIds.add(r.deviceRowId);
+      if (out.roleByRowId.get(r.deviceRowId) !== "action") out.roleByRowId.set(r.deviceRowId, r.role); // 'action' l'emporte
     }
     return out;
   }
