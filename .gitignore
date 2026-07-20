@@ -49,3 +49,5 @@ api/node_modules/
 # generated native folders
 /ios
 /android
+
+fcm-service-account.json
