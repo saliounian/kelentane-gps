@@ -5,12 +5,13 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import { Bell, MapPin, Settings } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED, Theme } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { fetchAlarmEvents, fetchAnomalies, fetchPrefs, patchPrefs } from "../data/alarms";
+import { logError, toUserMessage } from "../data/errorMessages";
 import { ALARM_TYPE_BY_ID } from "../data/alarmTypes";
-import { AlarmSettingsSheet, GlassButton, Toggle } from "../ui";
+import { AlarmSettingsSheet, ErrorState, GlassButton, MiniToast, SkeletonRow, Toggle } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { AlarmEventVM, DeviceHealthVM, HealthStatus, NotificationPrefs } from "../types/alarm";
 
@@ -30,6 +31,9 @@ export function AlarmsScreen() {
   const [tab, setTab] = useState<"alarmes" | "anomalies">("anomalies");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [settings, setSettings] = useState(false);
+  const [nonce, setNonce] = useState(0);
+  const [loading, setLoading] = useState(true); // §5 : skeleton au premier chargement
+  const [toast, setToast] = useState<string | null>(null); // §5 : échec d'une action optimiste
 
   useEffect(() => {
     let alive = true;
@@ -42,13 +46,18 @@ export function AlarmsScreen() {
         setPrefs(pr);
         setError(null);
       } catch (e) {
-        if (alive) setError((e as Error).message);
+        if (alive) {
+          logError("AlarmsScreen.load", e);
+          setError(toUserMessage(e));
+        }
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [nonce]);
 
   const anomCount = useMemo(() => health.filter((d) => d.status !== "ok").length, [health]);
   // défaut intelligent : Anomalies si présentes
@@ -56,21 +65,29 @@ export function AlarmsScreen() {
     if (anomCount === 0) setTab("alarmes");
   }, [anomCount]);
 
+  // §5 — Actions OPTIMISTES : l'interrupteur bascule tout de suite ; si l'appel
+  // échoue on REVIENT à l'état précédent et on affiche un petit toast traduit.
   const setArmed = async (armed: boolean) => {
+    const before = prefs;
     setPrefs((p) => ({ ...p, armed }));
     try {
       const r = await patchPrefs({ armed });
       setPrefs(r);
-    } catch {
-      /* ignore */
+    } catch (e) {
+      logError("AlarmsScreen.setArmed", e);
+      setPrefs(before);
+      setToast(toUserMessage(e));
     }
   };
   const toggleType = async (id: string, value: boolean) => {
+    const before = prefs;
     setPrefs((p) => ({ ...p, types: { ...p.types, [id]: value } }));
     try {
       await patchPrefs({ types: { [id]: value } });
-    } catch {
-      /* ignore */
+    } catch (e) {
+      logError("AlarmsScreen.toggleType", e);
+      setPrefs(before);
+      setToast(toUserMessage(e));
     }
   };
 
@@ -132,7 +149,14 @@ export function AlarmsScreen() {
         </View>
 
         {error ? (
-          <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{error}</Text>
+          <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
+        ) : loading ? (
+          // §5 : premier chargement de la page → skeleton (jamais un texte brut).
+          <View style={{ gap: 10 }}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonRow key={i} t={t} />
+            ))}
+          </View>
         ) : tab === "anomalies" ? (
           <View style={{ gap: 10 }}>
             {health.map((d) => {
@@ -226,6 +250,7 @@ export function AlarmsScreen() {
       </ScrollView>
 
       <AlarmSettingsSheet t={t} visible={settings} enabled={prefs.types} onToggle={toggleType} onClose={() => setSettings(false)} />
+      {toast ? <MiniToast t={t} message={toast} onClose={() => setToast(null)} /> : null}
     </View>
   );
 }

@@ -10,8 +10,8 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
 import { createGeofence, deleteGeofence, fetchGeofences, patchGeofence } from "../data/geofences";
-import { toUserMessage } from "../data/errorMessages";
-import { ErrorState, Glass, GlassButton, Toggle } from "../ui";
+import { logError, toUserMessage } from "../data/errorMessages";
+import { ErrorState, Glass, GlassButton, MiniToast, Toggle } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { GeofenceVM } from "../types/geofence";
 
@@ -31,6 +31,7 @@ export function GeofenceScreen() {
   const [view, setView] = useState<"list" | "edit">("list");
   const [zones, setZones] = useState<GeofenceVM[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null); // §5 : échec d'une action optimiste
 
   const [mode, setMode] = useState<"polygon" | "circle">("polygon");
   const [points, setPoints] = useState<LatLng[]>([]);
@@ -83,11 +84,15 @@ export function GeofenceScreen() {
     }
   };
 
+  // §5 — Actions OPTIMISTES : bascule/suppression appliquées tout de suite ;
+  // en cas d'échec on RECHARGE l'état serveur (rollback) + petit toast traduit.
   const toggle = async (z: GeofenceVM, on: boolean) => {
     setZones((arr) => arr.map((x) => (x.id === z.id ? { ...x, enabled: on } : x)));
     try {
       await patchGeofence(z.id, { enabled: on });
-    } catch {
+    } catch (e) {
+      logError("GeofenceScreen.toggle", e);
+      setToast(toUserMessage(e));
       load();
     }
   };
@@ -95,7 +100,9 @@ export function GeofenceScreen() {
     setZones((arr) => arr.filter((x) => x.id !== z.id));
     try {
       await deleteGeofence(z.id);
-    } catch {
+    } catch (e) {
+      logError("GeofenceScreen.remove", e);
+      setToast(toUserMessage(e));
       load();
     }
   };
@@ -303,6 +310,7 @@ export function GeofenceScreen() {
           </Glass>
         )}
       </ScrollView>
+      {toast ? <MiniToast t={t} message={toast} onClose={() => setToast(null)} /> : null}
     </View>
   );
 }

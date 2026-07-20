@@ -1,5 +1,11 @@
 {
-  "tabs": { "map": "Carte", "list": "Véhicules", "alarm": "Alarmes", "stats": "Stats", "me": "Profil" },
+  "tabs": {
+    "map": "Carte",
+    "list": "Véhicules",
+    "alarm": "Alarmes",
+    "stats": "Stats",
+    "me": "Profil"
+  },
   "common": {
     "speed": "Vitesse",
     "battery": "Batterie",
@@ -15,19 +21,69 @@
     "close": "Fermer",
     "on": "Marche",
     "off": "Arrêt",
+    "ignOn": "Allumé",
+    "ignOff": "Éteint",
+    "charging": "En charge",
     "noAddress": "Adresse indisponible",
     "vehicleNotFound": "Véhicule introuvable.",
     "na": "N/D"
   },
-  "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
+  "errors": {
+    "network": "Connexion perdue — Vérifiez votre réseau et réessayez.",
+    "timeout": "Le serveur met trop de temps à répondre — Réessayez dans un instant.",
+    "server": "Problème côté serveur — Ce n'est pas vous, réessayez dans un moment.",
+    "unauthorized": "Session expirée — Reconnectez-vous.",
+    "forbidden": "Accès refusé — Vous n'avez pas les droits pour cette action.",
+    "notFound": "Introuvable — Cet élément a été supprimé ou n'existe plus.",
+    "rateLimit": "Trop de tentatives — Patientez quelques instants avant de réessayer.",
+    "client": "Une erreur est survenue — Réessayez.",
+    "unknown": "Une erreur inattendue est survenue — Réessayez ou contactez le support si le problème persiste.",
+    "loginInvalid": "Identifiants incorrects — Vérifiez votre IMEI / nom d'utilisateur et votre mot de passe.",
+    "imeiOrPwdInvalid": "IMEI ou mot de passe incorrect.",
+    "devicePwdInvalid": "Mot de passe du dispositif incorrect.",
+    "wrongPassword": "Mot de passe incorrect.",
+    "ownerOnlyPwd": "Seul le propriétaire peut changer ce mot de passe.",
+    "ownerOnlyDelete": "Seul le propriétaire peut supprimer ce véhicule.",
+    "revoked": "Accès révoqué — Rajoutez le dispositif avec le nouveau mot de passe.",
+    "shareInvalid": "Jeton de partage invalide ou expiré."
+  },
+  "units": {
+    "kmh": "km/h",
+    "mph": "mph",
+    "km": "km",
+    "mi": "mi",
+    "kmLabel": "km / km/h",
+    "miLabel": "mi / mph"
+  },
   "cal": {
     "pickRange": "Choisir une plage",
     "from": "Du",
     "to": "au",
     "apply": "Appliquer",
     "clear": "Effacer",
-    "months": ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"],
-    "weekdays": ["L", "M", "M", "J", "V", "S", "D"]
+    "months": [
+      "Janvier",
+      "Février",
+      "Mars",
+      "Avril",
+      "Mai",
+      "Juin",
+      "Juillet",
+      "Août",
+      "Septembre",
+      "Octobre",
+      "Novembre",
+      "Décembre"
+    ],
+    "weekdays": [
+      "L",
+      "M",
+      "M",
+      "J",
+      "V",
+      "S",
+      "D"
+    ]
   },
   "map": {
     "summary": "{{count}} véhicules · {{active}} actifs",
@@ -35,7 +91,7 @@
     "following": "Suivi actif",
     "traj": "Trajectoire",
     "more": "Plus",
-    "stale": "Périmée"
+    "stale": "Pas à jour"
   },
   "list": {
     "title": "Véhicules",
@@ -103,9 +159,13 @@
     "devicePwdRule": "Mot de passe : 4 caractères minimum.",
     "devicePwdOk": "Mot de passe du dispositif mis à jour.",
     "devicePwdSave": "Enregistrer",
-    "devicePwdSaving": "Enregistrement…"
+    "devicePwdSaving": "Enregistrement…",
+    "telemetryAge": "Télémétrie"
   },
-  "pwd": { "confirmAccount": "Confirme avec le mot de passe du compte", "accountPwd": "Mot de passe du compte" },
+  "pwd": {
+    "confirmAccount": "Confirme avec le mot de passe du compte",
+    "accountPwd": "Mot de passe du compte"
+  },
   "alarms": {
     "title": "Alarmes",
     "toCorrect": "{{count}} dispositif(s) à corriger",
@@ -129,7 +189,13 @@
     "groupEvent": "Alarmes (événements)",
     "groupAnomaly": "Anomalies (dispositif)"
   },
-  "alarmLoc": { "title": "Emplacement de l'alarme", "name": "Nom", "status": "Statut", "signal": "Signal", "time": "Temps" },
+  "alarmLoc": {
+    "title": "Emplacement de l'alarme",
+    "name": "Nom",
+    "status": "Statut",
+    "signal": "Signal",
+    "time": "Temps"
+  },
   "km": {
     "title": "Kilométrage",
     "d7": "7 jours",
@@ -157,7 +223,18 @@
     "over": "Excès de vitesse",
     "activeDays": "Jours actifs"
   },
-  "traj": { "playback": "Lecture du trajet", "distance": "Distance", "duration": "Durée", "maxSpeed": "Vit. max", "slow": "Lent", "medium": "Moyen", "fast": "Vite", "noTrip": "Aucun trajet sur la période" },
+  "traj": {
+    "playback": "Lecture du trajet",
+    "distance": "Distance",
+    "duration": "Durée",
+    "maxSpeed": "Vit. max",
+    "slow": "Lent",
+    "medium": "Moyen",
+    "fast": "Vite",
+    "noTrip": "Aucun trajet sur la période",
+    "today": "Aujourd'hui",
+    "week": "Cette semaine"
+  },
   "geo": {
     "title": "Géofence",
     "subtitle": "{{name}} · zones de surveillance",
@@ -261,5 +338,12 @@
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "later": "Plus tard"
+  },
+  "time": {
+    "now": "à l'instant",
+    "minAgo": "il y a {{count}} min",
+    "hourAgo": "il y a {{count}} h",
+    "yesterdayAt": "hier à {{hour}} h",
+    "onDateAt": "le {{date}} à {{hour}} h"
   }
 }

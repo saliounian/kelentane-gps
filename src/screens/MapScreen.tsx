@@ -8,13 +8,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Clock, Crosshair, Grid2x2Plus, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED } from "../theme/tokens";
+import { AlertTriangle, BatteryCharging, Clock, Crosshair, Grid2x2Plus, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
+import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED, TRACK } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
+import { relAge } from "../utils/relTime";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { ActionBtn, GlassButton, KMonogram, Metric, StatusPill } from "../ui";
 import { VehicleMarker } from "./map/VehicleMarker";
@@ -38,6 +39,7 @@ function fmtDT(iso: string | null): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
 
 export function MapScreen() {
   const { t, dark } = useTheme();
@@ -180,7 +182,7 @@ export function MapScreen() {
         clusterColor={ACCENT}
         clusterTextColor={LIME_ON}
       >
-        {traceOn && trace.length > 1 ? <Polyline coordinates={trace} strokeColor={ACCENT} strokeWidth={4} /> : null}
+        {traceOn && trace.length > 1 ? <Polyline coordinates={trace} strokeColor={TRACK} strokeWidth={4} /> : null}
         {/* §2 : chaque marqueur expose `coordinate` (le clustering le lit) ; véhicules
             sans position exclus. La position exacte est préservée au dé-clustering. */}
         {vehicles
@@ -294,12 +296,25 @@ export function MapScreen() {
               <Text numberOfLines={2} style={{ fontSize: 12, color: t.sub, marginTop: 2, fontFamily: font.body.regular }}>
                 {active.addr ?? addrCache[active.id] ?? tr("common.noAddress")}
               </Text>
+              {isStale(active.lastSeen) ? (
+                <Text style={{ fontSize: 11, color: ALERT, marginTop: 2, fontFamily: font.body.medium }}>
+                  {tr("map.stale")} · {relAge(active.lastSeen)}
+                </Text>
+              ) : null}
             </View>
           </View>
 
           <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>
             <Metric t={t} label={tr("common.speed")} value={`${convSpeed(active.speed, units)}`} unit={speedUnit(units, tr)} />
-            <Metric t={t} label={tr("common.battery")} value={active.battery != null ? `${active.battery}` : tr("common.na")} unit={active.battery != null ? "%" : undefined} />
+            {/* §1 : batterie en % réel + éclair de charge quand `charge === true`. */}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Metric t={t} label={tr("common.battery")} value={active.battery != null ? `${active.battery}` : tr("common.na")} unit={active.battery != null ? "%" : undefined} />
+              {active.charge === true ? (
+                <View style={{ position: "absolute", top: 4, right: 5 }}>
+                  <BatteryCharging size={12} color={ONLINE} />
+                </View>
+              ) : null}
+            </View>
             <Metric
               t={t}
               label={tr("common.connection")}
@@ -321,7 +336,7 @@ export function MapScreen() {
             <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.mono.regular }}>{fmtDT(active.lastSeen)}</Text>
             <Power size={11} color={active.acc == null ? t.sub : active.acc ? ONLINE : OFFLINE} style={{ marginLeft: 8 }} />
             <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
-              {tr("detail.acc")} · {active.acc == null ? tr("common.na") : active.acc ? tr("common.on") : tr("common.off")}
+              {tr("detail.acc")} · {active.acc == null ? tr("common.na") : active.acc ? tr("common.ignOn") : tr("common.ignOff")}
             </Text>
           </View>
 

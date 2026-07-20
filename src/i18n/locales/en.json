@@ -1,5 +1,11 @@
 {
-  "tabs": { "map": "Map", "list": "Vehicles", "alarm": "Alarms", "stats": "Stats", "me": "Profile" },
+  "tabs": {
+    "map": "Map",
+    "list": "Vehicles",
+    "alarm": "Alarms",
+    "stats": "Stats",
+    "me": "Profile"
+  },
   "common": {
     "speed": "Speed",
     "battery": "Battery",
@@ -15,19 +21,69 @@
     "close": "Close",
     "on": "On",
     "off": "Off",
+    "ignOn": "On",
+    "ignOff": "Off",
+    "charging": "Charging",
     "noAddress": "Address unavailable",
     "vehicleNotFound": "Vehicle not found.",
     "na": "N/A"
   },
-  "units": { "kmh": "km/h", "mph": "mph", "km": "km", "mi": "mi", "kmLabel": "km / km/h", "miLabel": "mi / mph" },
+  "errors": {
+    "network": "Connection lost — Check your network and try again.",
+    "timeout": "The server is taking too long — Try again in a moment.",
+    "server": "Server problem — It's not you, try again shortly.",
+    "unauthorized": "Session expired — Please sign in again.",
+    "forbidden": "Access denied — You don't have permission for this action.",
+    "notFound": "Not found — This item was deleted or no longer exists.",
+    "rateLimit": "Too many attempts — Please wait a moment before trying again.",
+    "client": "Something went wrong — Please try again.",
+    "unknown": "An unexpected error occurred — Try again or contact support if it persists.",
+    "loginInvalid": "Invalid credentials — Check your IMEI / username and password.",
+    "imeiOrPwdInvalid": "Incorrect IMEI or password.",
+    "devicePwdInvalid": "Incorrect device password.",
+    "wrongPassword": "Incorrect password.",
+    "ownerOnlyPwd": "Only the owner can change this password.",
+    "ownerOnlyDelete": "Only the owner can delete this vehicle.",
+    "revoked": "Access revoked — Re-add the device with the new password.",
+    "shareInvalid": "Invalid or expired share token."
+  },
+  "units": {
+    "kmh": "km/h",
+    "mph": "mph",
+    "km": "km",
+    "mi": "mi",
+    "kmLabel": "km / km/h",
+    "miLabel": "mi / mph"
+  },
   "cal": {
     "pickRange": "Pick a range",
     "from": "From",
     "to": "to",
     "apply": "Apply",
     "clear": "Clear",
-    "months": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    "weekdays": ["M", "T", "W", "T", "F", "S", "S"]
+    "months": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "weekdays": [
+      "M",
+      "T",
+      "W",
+      "T",
+      "F",
+      "S",
+      "S"
+    ]
   },
   "map": {
     "summary": "{{count}} vehicles · {{active}} active",
@@ -35,7 +91,7 @@
     "following": "Following",
     "traj": "Trajectory",
     "more": "More",
-    "stale": "Stale"
+    "stale": "Out of date"
   },
   "list": {
     "title": "Vehicles",
@@ -103,9 +159,13 @@
     "devicePwdRule": "Password: 4 characters minimum.",
     "devicePwdOk": "Device password updated.",
     "devicePwdSave": "Save",
-    "devicePwdSaving": "Saving…"
+    "devicePwdSaving": "Saving…",
+    "telemetryAge": "Telemetry"
   },
-  "pwd": { "confirmAccount": "Confirm with your account password", "accountPwd": "Account password" },
+  "pwd": {
+    "confirmAccount": "Confirm with your account password",
+    "accountPwd": "Account password"
+  },
   "alarms": {
     "title": "Alarms",
     "toCorrect": "{{count}} device(s) to fix",
@@ -129,7 +189,13 @@
     "groupEvent": "Alarms (events)",
     "groupAnomaly": "Anomalies (device)"
   },
-  "alarmLoc": { "title": "Alarm location", "name": "Name", "status": "Status", "signal": "Signal", "time": "Time" },
+  "alarmLoc": {
+    "title": "Alarm location",
+    "name": "Name",
+    "status": "Status",
+    "signal": "Signal",
+    "time": "Time"
+  },
   "km": {
     "title": "Mileage",
     "d7": "7 days",
@@ -157,7 +223,18 @@
     "over": "Overspeed",
     "activeDays": "Active days"
   },
-  "traj": { "playback": "Trip playback", "distance": "Distance", "duration": "Duration", "maxSpeed": "Max spd", "slow": "Slow", "medium": "Medium", "fast": "Fast", "noTrip": "No trip in this period" },
+  "traj": {
+    "playback": "Trip playback",
+    "distance": "Distance",
+    "duration": "Duration",
+    "maxSpeed": "Max spd",
+    "slow": "Slow",
+    "medium": "Medium",
+    "fast": "Fast",
+    "noTrip": "No trip in this period",
+    "today": "Today",
+    "week": "This week"
+  },
   "geo": {
     "title": "Geofence",
     "subtitle": "{{name}} · monitored zones",
@@ -261,5 +338,12 @@
     "save": "Save",
     "saving": "Saving…",
     "later": "Later"
+  },
+  "time": {
+    "now": "just now",
+    "minAgo": "{{count}} min ago",
+    "hourAgo": "{{count}} h ago",
+    "yesterdayAt": "yesterday at {{hour}}:00",
+    "onDateAt": "on {{date}} at {{hour}}:00"
   }
 }

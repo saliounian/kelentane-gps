@@ -8,7 +8,8 @@ import { ACCENT, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { fetchKm, type Range } from "../data/reports";
-import { BarChart, DateRangeSheet, Glass, GlassButton } from "../ui";
+import { toUserMessage } from "../data/errorMessages";
+import { BarChart, DateRangeSheet, ErrorState, Glass, GlassButton, Skeleton } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { KmReport } from "../types/reports";
 
@@ -26,6 +27,7 @@ export function KmScreen() {
   const [perso, setPerso] = useState(false);
   const [data, setData] = useState<KmReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -44,13 +46,13 @@ export function KmScreen() {
           setError(null);
         }
       } catch (e) {
-        if (alive) setError((e as Error).message);
+        if (alive) setError(toUserMessage(e));
       }
     })();
     return () => {
       alive = false;
     };
-  }, [params.vehicleId, mode, customFrom, customTo]);
+  }, [params.vehicleId, mode, customFrom, customTo, nonce]);
 
   const customLabel = mode === "custom" && customFrom && customTo ? `${fmtShort(customFrom)}–${fmtShort(customTo)}` : tr("km.custom");
   const chips: { id: Range; label: string }[] = [
@@ -84,9 +86,14 @@ export function KmScreen() {
         </View>
 
         {error ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{error}</Text>
+          <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
         ) : !data ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("common.loading")}</Text>
+          // §5 : page entière qui charge → skeleton (total + graphe + tuiles).
+          <View style={{ gap: 12 }}>
+            <Skeleton t={t} height={110} radius={16} />
+            <Skeleton t={t} height={160} radius={16} />
+            <Skeleton t={t} height={72} radius={16} />
+          </View>
         ) : (
           <>
             <Glass t={t} dark={dark} style={{ padding: 16 }}>

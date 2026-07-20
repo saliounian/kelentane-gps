@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -14,7 +14,7 @@ import { useVehicles } from "../data/useVehicles";
 import { addVehicleAccess, deleteVehicle } from "../data/api";
 import { toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
-import { BottomSheet, ErrorState, Field, Glass, StatusDot } from "../ui";
+import { BottomSheet, ErrorState, Field, Glass, SkeletonRow, StatusDot } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
@@ -146,9 +146,16 @@ export function ListScreen() {
 
         {error ? (
           <ErrorState t={t} message={error} onRetry={refresh} />
+        ) : loading && vehicles.length === 0 ? (
+          // §5 : chargement initial d'une page entière → skeleton (jamais un texte brut).
+          <View style={{ gap: 10 }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <SkeletonRow key={i} t={t} />
+            ))}
+          </View>
         ) : filtered.length === 0 ? (
           <Text style={{ color: t.sub, fontSize: 13, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>
-            {loading ? tr("common.loading") : tr("list.empty")}
+            {tr("list.empty")}
           </Text>
         ) : (
           <View style={{ gap: 10 }}>
@@ -227,7 +234,8 @@ export function ListScreen() {
         {(() => {
           const canSubmit = !!imei.trim() && !!devicePwd.trim() && !busy;
           return (
-            <Pressable onPress={add} disabled={!canSubmit} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: canSubmit ? ACCENT : hexA(t.text, 0.12) }}>
+            <Pressable onPress={add} disabled={!canSubmit} style={{ flexDirection: "row", justifyContent: "center", gap: 8, padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: canSubmit ? ACCENT : hexA(t.text, 0.12) }}>
+              {busy ? <ActivityIndicator size="small" color={LIME_ON} /> : null}
               <Text style={{ fontSize: 15, color: canSubmit ? LIME_ON : t.sub, fontFamily: font.body.bold }}>{busy ? tr("list.enrolling") : tr("list.enroll")}</Text>
             </Pressable>
           );

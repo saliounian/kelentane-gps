@@ -13,6 +13,7 @@ import { LANG_LABELS, LANGS, RTL_LANGS, type Lang } from "../i18n";
 import { useVehicles } from "../data/useVehicles";
 import { supabase } from "../data/supabase";
 import { claimShare, createShare } from "../data/shares";
+import { logError, toUserMessage } from "../data/errorMessages";
 import { BottomSheet, Field, SectionLabel, Toggle } from "../ui";
 import type { LucideIcon } from "../types/models";
 
@@ -137,7 +138,8 @@ function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boole
   const save = async () => {
     if (pwd.length < 4 || pwd !== pwd2) return setMsg(tr("profile.pwdRule"));
     const { error } = await supabase.auth.updateUser({ password: pwd });
-    setMsg(error ? error.message : tr("profile.pwdUpdated"));
+    if (error) logError("ProfileScreen.updatePwd", error);
+    setMsg(error ? toUserMessage(error) : tr("profile.pwdUpdated"));
     if (!error) {
       setPwd("");
       setPwd2("");
@@ -176,7 +178,10 @@ function PhoneEditSheet({ t, visible, uid, current, onSaved, onClose }: { t: The
     setSaving(true);
     const { error } = await supabase.from("clients").update({ phone: val }).eq("id", uid);
     setSaving(false);
-    if (error) return setMsg(error.message);
+    if (error) {
+      logError("ProfileScreen.updatePhone", error);
+      return setMsg(toUserMessage(error));
+    }
     onSaved(val);
     onClose();
   };
@@ -233,7 +238,8 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
       const r = await createShare(vehicleId);
       setToken(r.token);
     } catch (e) {
-      setMsg((e as Error).message);
+      logError("ProfileScreen.createShare", e);
+      setMsg(toUserMessage(e));
     }
   };
   const copy = async () => {
@@ -248,7 +254,8 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
       setMsg(tr("profile.deviceAdded"));
       setClaim("");
     } catch (e) {
-      setMsg((e as Error).message);
+      logError("ProfileScreen.claimShare", e);
+      setMsg(toUserMessage(e));
     }
   };
 

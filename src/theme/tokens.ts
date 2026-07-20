@@ -19,6 +19,10 @@ export let LIME_ON = "#FFFFFF"; // texte BLANC posé sur l'accent vert plein
 export let ACCENT = LIME;
 
 export let ONLINE = "#159C6A"; // Pin 500 — en ligne / en mouvement
+// §3 : teinte CLAIRE de marque pour les tracés de suivi/trajectoire (dérivée du Pin
+// #159C6A, éclaircie). Const : lisible sur clair ET sombre, indépendante des variantes.
+// (pas de dégradé natif : `strokeColors` en dégradé ≈ iOS seul sur react-native-maps.)
+export const TRACK = "#4FD6A0";
 export let PARKED = "#B8862E"; // ambre doré — stationné / attention
 export let OFFLINE = "#9AA39D"; // charbon 300 — hors ligne
 export let ALERT = "#B23B2E"; // terracotta brique — alarme / anomalie

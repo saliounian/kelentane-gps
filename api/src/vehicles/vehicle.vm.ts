@@ -16,6 +16,7 @@ export interface VehicleVM {
   addr: string | null;
   signal: "GPS" | "LBS";
   battery: number | null; // % batterie interne boîtier
+  charge: boolean | null; // batterie en charge (véhicule alimente le boîtier)
   voltage: number | null; // tension véhicule (V)
   acc: boolean | null; // contact (ignition)
   sats: number | null;

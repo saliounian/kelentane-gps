@@ -61,7 +61,12 @@ export function toVM(d: TraccarDevice, p: TraccarPosition | undefined, now: Date
     // null = donnée batterie ABSENTE à la source (certains GT06N n'en remontent pas)
     // → l'app affiche « Non disponible », pas un 0 trompeur.
     battery: (a.battery as number | undefined) ?? (a.batteryLevel as number | undefined) ?? null,
-    voltage: (a.power as number | undefined) ?? (a.voltage as number | undefined) ?? null,
+    charge: typeof a.charge === "boolean" ? a.charge : null,
+    voltage:
+      (a.power as number | undefined) ??
+      (a.voltage as number | undefined) ??
+      (a.adc1 as number | undefined) ??
+      null,
     acc,
     sats: (a.sat as number | undefined) ?? null,
     gsm: (a.rssi as number | undefined) ?? null,

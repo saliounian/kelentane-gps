@@ -13,6 +13,7 @@ export interface VehicleVM {
   addr: string | null;
   signal: "GPS" | "LBS";
   battery: number | null;
+  charge: boolean | null;
   voltage: number | null;
   acc: boolean | null;
   sats: number | null;
@@ -31,4 +32,11 @@ export interface VehicleVM {
   iconKey: string | null;
   accessRole: "consultation" | "action" | null;
   accessStatus: "active" | "revalidate" | null;
+  /**
+   * §1 — CLIENT UNIQUEMENT (absent de l'API façade) : date du dernier paquet ayant
+   * réellement porté de la télémétrie (batterie/charge/contact/tension). Sert à dater
+   * les valeurs conservées par `mergePositions` quand les paquets de position pure
+   * les remettent à null.
+   */
+  telemetryAt?: string | null;
 }

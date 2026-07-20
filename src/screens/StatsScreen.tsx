@@ -7,7 +7,8 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
 import { fetchStats } from "../data/reports";
-import { BarChart, Glass, Metric } from "../ui";
+import { toUserMessage } from "../data/errorMessages";
+import { BarChart, ErrorState, Glass, Metric, Skeleton } from "../ui";
 import type { StatsReport } from "../types/reports";
 
 export function StatsScreen() {
@@ -19,6 +20,7 @@ export function StatsScreen() {
   const [data, setData] = useState<StatsReport | null>(null);
   const [sel, setSel] = useState(6);
   const [error, setError] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (vid === null && vehicles.length) setVid(vehicles[0].id);
@@ -35,13 +37,13 @@ export function StatsScreen() {
         setSel(Math.max(0, r.days.length - 1));
         setError(null);
       } catch (e) {
-        if (alive) setError((e as Error).message);
+        if (alive) setError(toUserMessage(e));
       }
     })();
     return () => {
       alive = false;
     };
-  }, [vid]);
+  }, [vid, nonce]);
 
   const dayKm = data?.days[sel]?.km ?? 0;
   const dayLabel = useMemo(() => {
@@ -77,9 +79,18 @@ export function StatsScreen() {
         </ScrollView>
 
         {error ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{error}</Text>
+          <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
         ) : !data ? (
-          <Text style={{ color: t.sub, textAlign: "center", marginTop: 20, fontFamily: font.body.regular }}>{tr("common.loading")}</Text>
+          // §5 : chargement de la page Stats → skeleton (grand chiffre + graphe + tuiles).
+          <View style={{ gap: 12 }}>
+            <Skeleton t={t} height={92} radius={16} />
+            <Skeleton t={t} height={150} radius={16} />
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Skeleton t={t} height={64} radius={13} style={{ flex: 1 }} />
+              <Skeleton t={t} height={64} radius={13} style={{ flex: 1 }} />
+              <Skeleton t={t} height={64} radius={13} style={{ flex: 1 }} />
+            </View>
+          </View>
         ) : (
           <>
             {/* jour sélectionné */}

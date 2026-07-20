@@ -1,9 +1,21 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "../data/supabase";
-import { imeiLogin } from "../data/api";
+import i18n from "../i18n";
+import { ApiError, imeiLogin, request } from "../data/api";
+import { isNetworkError, logError, userMessage } from "../data/errorMessages";
 import { loadRememberFlag, saveIdentifier, setRemember } from "../data/authStorage";
-import { API_URL } from "../config/env";
+
+/**
+ * Traduit une erreur d'authentification supabase en `ApiError` sûre :
+ * problème réseau → message de connexion ; sinon → identifiants incorrects.
+ * Le détail technique (message supabase) est journalisé, jamais affiché.
+ */
+function authError(raw: unknown): ApiError {
+  logError("auth", raw);
+  if (isNetworkError(raw)) return new ApiError(userMessage("network"), { kind: "network" });
+  return new ApiError(i18n.t("errors.loginInvalid"), { status: 401 });
+}
 
 export type AuthStatus = "checking" | "out" | "in";
 
@@ -51,19 +63,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (/^\d{10,17}$/.test(id)) {
       const { accessToken, refreshToken } = await imeiLogin(id, password);
       const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      if (error) throw new Error("Identifiant ou mot de passe incorrect.");
+      if (error) throw authError(error);
       return;
     }
     const email = usernameToEmail(id);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error("Identifiant ou mot de passe incorrect.");
+    if (error) throw authError(error);
   };
 
   const checkUsername = async (username: string): Promise<boolean> => {
+    // §4.1 : passe par le client réseau unique. Indisponibilité API = on ne bloque
+    // pas la saisie (l'unicité de l'email synthétique tranche à l'inscription).
     try {
-      const res = await fetch(`${API_URL}/auth/username-available?u=${encodeURIComponent(username.trim())}`);
-      if (!res.ok) return true; // ne bloque pas si l'API est indispo (l'unicité email tranche à l'inscription)
-      const j = (await res.json()) as { available: boolean };
+      const j = await request<{ available: boolean }>(`/auth/username-available?u=${encodeURIComponent(username.trim())}`, { auth: false });
       return j.available;
     } catch {
       return true;
@@ -74,8 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const email = usernameToEmail(username);
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
+      logError("auth.signUp", error);
       // email synthétique dupliqué = username déjà pris (garantie dure)
-      throw new Error(/registered|exists|already/i.test(error.message) ? "Ce nom d'utilisateur est déjà pris." : error.message);
+      if (/registered|exists|already/i.test(error.message)) { // check-error-leaks-allow : classement, jamais affiché
+        throw new ApiError(i18n.t("auth.usernameTaken"), { status: 409 });
+      }
+      if (isNetworkError(error)) throw new ApiError(userMessage("network"), { kind: "network" });
+      // jamais le message technique supabase brut → filet générique
+      throw new ApiError(userMessage("unknown"), { kind: "unknown" });
     }
     const userId = data.user?.id;
     if (userId) {

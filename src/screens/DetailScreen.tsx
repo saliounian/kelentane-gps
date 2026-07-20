@@ -5,6 +5,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Battery,
+  BatteryCharging,
   Car,
   ChevronLeft,
   ChevronRight,
@@ -39,8 +40,9 @@ import { convKm, convSpeed, distUnit, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { sendCommand, type CommandType } from "../data/commands";
 import { ApiError, changeDevicePassword, patchVehicle, type VehiclePatch } from "../data/api";
-import { toUserMessage } from "../data/errorMessages";
+import { logError, toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
+import { relAge } from "../utils/relTime";
 import { useIconOverrides } from "../state/iconOverrides";
 import {
   BottomSheet,
@@ -51,23 +53,15 @@ import {
   Glass,
   GlassButton,
   Metric,
+  MiniToast,
   PasswordSheet,
   Row,
+  Skeleton,
   StatusPill,
 } from "../ui";
 import type { Command } from "../types/models";
 import type { RootStackParamList } from "../navigation/types";
-import type { VehicleVM } from "../types/vehicle";
 
-function relAgo(iso: string | null): string {
-  if (!iso) return "—";
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return "à l'instant";
-  if (min < 60) return `il y a ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `il y a ${h} h`;
-  return `il y a ${Math.floor(h / 24)} j`;
-}
 function fmtDT(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -90,7 +84,7 @@ export function DetailScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { params } = useRoute<RouteProp<RootStackParamList, "Detail">>();
-  const { vehicles, refresh } = useVehicles();
+  const { vehicles, loading, refresh } = useVehicles();
   const { overrides } = useIconOverrides();
   const v = vehicles.find((x) => x.id === params.vehicleId);
 
@@ -106,12 +100,25 @@ export function DetailScreen() {
   const [newDevPwd, setNewDevPwd] = useState("");
   const [devPwdMsg, setDevPwdMsg] = useState<string | null>(null);
   const [savingDevPwd, setSavingDevPwd] = useState(false);
+  const [toast, setToast] = useState<string | null>(null); // §5 : échec d'une action optimiste
 
   if (!v) {
+    // §5 : ouverture de l'écran = page entière qui charge → SKELETON. « Véhicule
+    // introuvable » n'est affiché qu'une fois la flotte réellement chargée.
+    const pending = loading && vehicles.length === 0;
     return (
-      <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top + 12, paddingHorizontal: 14 }}>
+      <View style={{ flex: 1, backgroundColor: t.bg, paddingTop: insets.top + 12, paddingHorizontal: 14, gap: 12 }}>
         <GlassButton t={t} icon={ChevronLeft} onPress={() => nav.goBack()} />
-        <Text style={{ color: t.sub, marginTop: 20, fontFamily: font.body.regular }}>{tr("common.vehicleNotFound")}</Text>
+        {pending ? (
+          <>
+            <Skeleton t={t} height={54} radius={16} />
+            <Skeleton t={t} height={120} radius={16} />
+            <Skeleton t={t} height={220} radius={16} />
+            <Skeleton t={t} height={96} radius={16} />
+          </>
+        ) : (
+          <Text style={{ color: t.sub, marginTop: 20, fontFamily: font.body.regular }}>{tr("common.vehicleNotFound")}</Text>
+        )}
       </View>
     );
   }
@@ -120,13 +127,19 @@ export function DetailScreen() {
   const VIcon = iconForVehicle({ iconKey, type: v.type });
   const followUrl = `https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=driving`;
 
-  // Persistance base app (PATCH). Échec silencieux : l'édition locale reste affichée.
-  const persist = async (patch: VehiclePatch) => {
+  /**
+   * §5 — Écriture OPTIMISTE : le champ édité est déjà affiché localement ; on
+   * persiste en fond et, en cas d'échec, on RESTAURE la valeur serveur (`rollback`)
+   * puis on affiche un petit toast traduit (jamais l'exception brute).
+   */
+  const persist = async (patch: VehiclePatch, rollback: () => void) => {
     try {
       await patchVehicle(v.id, patch);
       refresh();
-    } catch {
-      /* réseau/API indispo — champs locaux conservés */
+    } catch (e) {
+      logError("DetailScreen.persist", e);
+      rollback();
+      setToast(toUserMessage(e));
     }
   };
 
@@ -241,7 +254,7 @@ export function DetailScreen() {
         {/* détails dispositif */}
         <Label t={t}>{tr("detail.deviceDetails")}</Label>
         <Glass t={t} dark={dark} style={{ padding: 4 }}>
-          <EditableRow t={t} icon={Car} label={tr("detail.devName")} value={devName} onChangeText={setDevName} onEndEditing={() => persist({ name: devName })} />
+          <EditableRow t={t} icon={Car} label={tr("detail.devName")} value={devName} onChangeText={setDevName} onEndEditing={() => persist({ name: devName }, () => setDevName(v.name ?? ""))} />
           <Pressable
             onPress={() => nav.navigate("IconPicker", { vehicleId: v.id })}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: t.line }}
@@ -257,15 +270,15 @@ export function DetailScreen() {
           </Pressable>
           <Row t={t} icon={Hash} label={tr("detail.imei")} value={v.imei} mono />
           <Row t={t} icon={Cpu} label={tr("detail.model")} value={v.model ?? "—"} />
-          <Row t={t} icon={Power} label={tr("detail.accState")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
+          <Row t={t} icon={Power} label={tr("detail.accState")} value={v.acc == null ? tr("common.na") : v.acc ? tr("common.ignOn") : tr("common.ignOff")} valueColor={v.acc ? ONLINE : OFFLINE} />
           <Row t={t} icon={Hash} label={tr("detail.plate")} value={v.plate ?? "—"} mono />
-          <Row t={t} icon={Battery} label={tr("detail.intBattery")} value={v.battery != null ? `${v.battery}%` : tr("detail.batteryNA")} />
+          <Row t={t} icon={v.charge === true ? BatteryCharging : Battery} label={tr("detail.intBattery")} value={v.battery != null ? `${v.battery}%` : tr("detail.batteryNA")} valueColor={v.charge === true ? ONLINE : undefined} />
           <Row t={t} icon={Zap} label={tr("detail.vehVoltage")} value={v.voltage != null ? `${v.voltage} V` : "—"} />
           <Row t={t} icon={Radio} label={tr("detail.gsm")} value={v.gsm != null ? `${v.gsm}/5` : "—"} />
           <Row t={t} icon={Satellite} label={tr("detail.sats")} value={v.sats != null ? `${v.sats}` : "—"} />
           <Row t={t} icon={Gauge} label={tr("detail.odo")} value={v.odo != null ? `${convKm(v.odo, units).toLocaleString("fr-FR")} ${distUnit(units, tr)}` : "—"} mono />
-          <EditableRow t={t} icon={CreditCard} label={tr("detail.sim")} value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim })} />
-          <EditableRow t={t} icon={Phone} label={tr("detail.simNumber")} value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone })} mono />
+          <EditableRow t={t} icon={CreditCard} label={tr("detail.sim")} value={devSim} onChangeText={setDevSim} onEndEditing={() => persist({ sim: devSim }, () => setDevSim(v.sim ?? ""))} />
+          <EditableRow t={t} icon={Phone} label={tr("detail.simNumber")} value={devPhone} onChangeText={setDevPhone} onEndEditing={() => persist({ phone: devPhone }, () => setDevPhone(v.phone ?? ""))} mono />
           <Row t={t} icon={Hash} label={tr("detail.iccid")} value={v.iccid ?? "—"} mono />
           <Row t={t} icon={UserRound} label={tr("detail.ownerContact")} value={v.owner ?? "—"} last />
         </Glass>
@@ -281,9 +294,12 @@ export function DetailScreen() {
         <Glass t={t} dark={dark} style={{ padding: 4 }}>
           <Row t={t} icon={MapPin} label={tr("detail.address")} value={v.addr ?? "—"} />
           <Row t={t} icon={Signal} label={tr("detail.positioning")} value={v.signal} />
-          <Row t={t} icon={Power} label={tr("detail.acc")} value={v.acc == null ? "—" : v.acc ? tr("common.on") : tr("common.off")} valueColor={v.acc ? ONLINE : OFFLINE} />
+          <Row t={t} icon={Power} label={tr("detail.acc")} value={v.acc == null ? tr("common.na") : v.acc ? tr("common.ignOn") : tr("common.ignOff")} valueColor={v.acc ? ONLINE : OFFLINE} />
           <Row t={t} icon={Clock} label={tr("detail.lastPos")} value={fmtDT(v.lastSeen)} mono />
-          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label={tr("detail.update")} value={relAgo(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} last />
+          <Row t={t} icon={v.status === "offline" ? WifiOff : Wifi} label={tr("detail.update")} value={relAge(v.lastSeen)} valueColor={v.lastSeen ? freshColor(new Date(v.lastSeen)) : OFFLINE} />
+          {/* §1 : la télémétrie (batterie/charge/contact/tension) arrive sur les paquets
+              de STATUT, plus rares que les positions → on date la dernière vraie MAJ. */}
+          <Row t={t} icon={Battery} label={tr("detail.telemetryAge")} value={relAge(v.telemetryAt)} last />
         </Glass>
       </ScrollView>
 
@@ -309,6 +325,7 @@ export function DetailScreen() {
       </BottomSheet>
 
       {cmd ? <CommandToast t={t} cmd={cmd} onClose={() => setCmd(null)} /> : null}
+      {toast ? <MiniToast t={t} message={toast} onClose={() => setToast(null)} /> : null}
     </View>
   );
 }

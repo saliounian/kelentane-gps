@@ -8,6 +8,7 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useAuth, suggestUsername } from "../state/auth";
 import { addIdentifierToHistory, getIdentifierHistory, rememberedIdentifier, removeIdentifierFromHistory } from "../data/authStorage";
+import { toUserMessage } from "../data/errorMessages";
 import { BottomSheet, Field, KMonogram, Toggle } from "../ui";
 
 /** Écran de vérification de session (authStatus === "checking"). */
@@ -94,7 +95,7 @@ function LoginView({ t, onRegister, onForgot }: { t: ReturnType<typeof useTheme>
       await addIdentifierToHistory(id);
       setHistory(await getIdentifierHistory());
     } catch (e) {
-      setError((e as Error).message);
+      setError(toUserMessage(e));
     } finally {
       setLoading(false);
     }
@@ -176,7 +177,7 @@ function RegisterView({ t, onBack }: { t: ReturnType<typeof useTheme>["t"]; onBa
     try {
       await signUp({ fullName, phone, username, password: pwd });
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(toUserMessage(e));
     } finally {
       setLoading(false);
     }

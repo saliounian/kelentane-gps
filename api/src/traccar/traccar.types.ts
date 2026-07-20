@@ -67,8 +67,10 @@ export interface TraccarPosition {
   attributes: {
     battery?: number; // % batterie interne (si le boîtier la remonte)
     batteryLevel?: number; // % batterie interne (nom Traccar pour certains protocoles)
+    charge?: boolean; // batterie en charge (boîtier alimenté par le véhicule)
     power?: number; // tension véhicule (V)
     voltage?: number;
+    adc1?: number; // entrée analogique = tension véhicule (V) sur certains protocoles
     ignition?: boolean; // ACC
     sat?: number; // satellites
     rssi?: number; // signal GSM
