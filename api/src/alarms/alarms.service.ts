@@ -92,7 +92,11 @@ export class AlarmsService {
     return pos?.address ?? "—";
   }
 
-  private health(d: TraccarDevice, pos: TraccarPosition | undefined, now: Date): DeviceHealthVM {
+  /**
+   * Santé d'UN dispositif. Public : réutilisé par `AnomalyPushMonitor` pour pousser
+   * les anomalies d'état (même calcul que l'écran Alarmes → zéro divergence).
+   */
+  health(d: TraccarDevice, pos: TraccarPosition | undefined, now: Date): DeviceHealthVM {
     const a = pos?.attributes ?? {};
     const last = d.lastUpdate ? new Date(d.lastUpdate).getTime() : 0;
     const ageMs = last ? now.getTime() - last : Infinity;

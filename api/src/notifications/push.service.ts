@@ -71,7 +71,21 @@ export class PushService {
     // Expo limite à 100 messages par requête → on découpe.
     for (let i = 0; i < tokens.length; i += 100) {
       const batch = tokens.slice(i, i + 100);
-      const messages = batch.map((to) => ({ to, title: msg.title, body: msg.body, sound: "default", data: msg.data ?? {} }));
+      // title + body ⇒ notification VISIBLE (alert/aps sur iOS, notification FCM sur
+      // Android), jamais data-only → s'affiche en arrière-plan. priority high pour la
+      // livraison immédiate côté Android.
+      // `channelId` : canal Android « alarms » créé par l'app (importance MAX →
+      // bannière + son). Sans canal explicite, Android retombe sur un canal par
+      // défaut d'importance basse et la notif n'apparaît pas en tête d'écran.
+      const messages = batch.map((to) => ({
+        to,
+        title: msg.title,
+        body: msg.body,
+        sound: "default",
+        priority: "high",
+        channelId: "alarms",
+        data: msg.data ?? {},
+      }));
       try {
         const res = await fetch("https://exp.host/--/api/v2/push/send", {
           method: "POST",

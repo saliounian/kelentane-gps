@@ -7,5 +7,6 @@ import { AlarmsService } from "./alarms.service";
   imports: [TraccarModule],
   controllers: [AlarmsController],
   providers: [AlarmsService],
+  exports: [AlarmsService],
 })
 export class AlarmsModule {}

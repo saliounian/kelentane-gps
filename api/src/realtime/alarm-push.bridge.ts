@@ -1,17 +1,50 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import type { Subscription } from "rxjs";
-import { SupabaseService } from "../supabase/supabase.service";
-import { DevicesService } from "../supabase/devices.service";
 import { PushService } from "../notifications/push.service";
+import { AlarmRecipientsService } from "./alarm-recipients.service";
 import { TraccarRealtimeService, type AlarmEvent } from "./traccar-realtime.service";
 
 /**
- * Mapping event Traccar → id d'alarme (clé des préférences) + libellés FR.
+ * Mapping event Traccar → id d'alarme (clé des préférences ALARM_TYPES) + libellés FR.
  * Retourne null pour les types non pris en charge (ignorés).
+ *
+ * Couvre TOUS les types d'ÉVÉNEMENT du menu Alarmes que Traccar émet en temps réel :
+ *  geo_in / geo_out / speed / ignition (démarrage) / tow / power / battery / disconnect,
+ *  plus `hours` (déplacement hors horaires) dérivé d'un démarrage/mouvement survenu
+ *  dans la fenêtre de nuit (voir NIGHT_FROM_H / NIGHT_TO_H).
+ *
+ * Les ANOMALIES d'ÉTAT (`sim`, `gsm`, `gps_lost`, `late`, et `power`/`battery`/
+ * `disconnect` quand ils viennent de la santé dispositif §6.4 plutôt que d'un
+ * événement) ne transitent pas par ce flux : elles sont poussées par
+ * `AnomalyPushMonitor`, qui les évalue périodiquement en front montant.
  */
+
+/**
+ * Fenêtre « hors horaires » (heure locale du serveur — Dakar UTC+0) : tout
+ * démarrage/mouvement entre 22 h et 5 h déclenche `hours` EN PLUS de l'événement
+ * d'origine. Constantes ajustables ici tant qu'une plage par utilisateur n'existe
+ * pas côté préférences (dette assumée, documentée dans le récap de lot).
+ */
+const NIGHT_FROM_H = 22;
+const NIGHT_TO_H = 5;
+
+/** Vrai si l'horodatage de l'événement tombe dans la fenêtre de nuit. */
+function isOutsideHours(iso: string): boolean {
+  const h = new Date(iso).getHours();
+  return h >= NIGHT_FROM_H || h < NIGHT_TO_H;
+}
+
+/** Événement `hours` dérivé : mouvement constaté hors horaires. */
+function describeHours(ev: AlarmEvent): { type: string; title: string; body: string } | null {
+  const t = ev.event.type;
+  const moving = t === "ignitionOn" || t === "deviceMoving" || ev.event.attributes?.alarm === "movement";
+  if (!moving || !isOutsideHours(ev.event.eventTime)) return null;
+  return { type: "hours", title: "Déplacement hors horaires", body: `${ev.deviceName} bouge en dehors des horaires habituels.` };
+}
 function describe(ev: AlarmEvent): { type: string; title: string; body: string } | null {
   const name = ev.deviceName;
-  switch (ev.event.type) {
+  const et = ev.event.type;
+  switch (et) {
     case "geofenceEnter":
       return { type: "geo_in", title: "Entrée de géofence", body: `${name} est entré dans une zone.` };
     case "geofenceExit":
@@ -21,11 +54,31 @@ function describe(ev: AlarmEvent): { type: string; title: string; body: string }
       const kmh = typeof s === "number" ? ` (${Math.round(s * 1.852)} km/h)` : ""; // Traccar = nœuds
       return { type: "speed", title: "Excès de vitesse", body: `${name} — excès de vitesse${kmh}.` };
     }
-    case "ignitionOff":
-      // Pas d'id dédié « coupure de contact » → réutilise la préf `ignition` (contact).
-      return { type: "ignition", title: "Coupure de contact", body: `${name} — contact coupé.` };
+    case "ignitionOn":
+      return { type: "ignition", title: "Démarrage moteur", body: `${name} — moteur démarré.` };
+    case "deviceOffline":
+      return { type: "disconnect", title: "Déconnexion prolongée", body: `${name} — dispositif hors ligne.` };
+    case "alarm":
+      return describeAlarm(ev.event.attributes?.alarm, name);
     default:
       return null;
+  }
+}
+
+/** Sous-type d'alarme Traccar (`attributes.alarm`) → id d'alarme du menu + libellé FR. */
+function describeAlarm(alarm: string | undefined, name: string): { type: string; title: string; body: string } | null {
+  switch (alarm) {
+    case "tow":
+    case "movement":
+      return { type: "tow", title: "Mouvement sans contact", body: `${name} bouge sans contact.` };
+    case "powerCut":
+    case "powerOff":
+      return { type: "power", title: "Alimentation coupée", body: `${name} — alimentation coupée.` };
+    case "lowBattery":
+    case "lowPower":
+      return { type: "battery", title: "Tension batterie faible", body: `${name} — batterie faible.` };
+    default:
+      return null; // sos, autres alarmes hors menu → ignorées (pas de préférence dédiée)
   }
 }
 
@@ -43,8 +96,7 @@ export class AlarmPushBridge implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly realtime: TraccarRealtimeService,
     private readonly push: PushService,
-    private readonly devices: DevicesService,
-    private readonly supa: SupabaseService,
+    private readonly recipients: AlarmRecipientsService,
   ) {}
 
   onModuleInit(): void {
@@ -60,36 +112,25 @@ export class AlarmPushBridge implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handle(ev: AlarmEvent): Promise<void> {
-    const desc = describe(ev);
-    if (!desc) return; // type non géré
-    const userIds = await this.usersForImei(ev.imei);
+    // Un même événement peut produire DEUX notifications de types différents
+    // (ex. démarrage moteur à 23 h → `ignition` + `hours`) : chacune reste soumise
+    // à sa propre préférence utilisateur côté PushService.
+    const descs = [describe(ev), describeHours(ev)].filter((d): d is { type: string; title: string; body: string } => d !== null);
+    if (descs.length === 0) return; // type non géré
+    const userIds = await this.recipients.usersForImei(ev.imei);
     for (const uid of userIds) {
-      try {
-        await this.push.sendToUser(uid, {
-          title: desc.title,
-          body: desc.body,
-          type: desc.type,
-          data: { imei: ev.imei, eventType: ev.event.type },
-        });
-      } catch (e) {
-        this.log.error(`push ${uid} (${ev.imei}): ${(e as Error).message}`);
+      for (const desc of descs) {
+        try {
+          await this.push.sendToUser(uid, {
+            title: desc.title,
+            body: desc.body,
+            type: desc.type,
+            data: { imei: ev.imei, eventType: ev.event.type, alarmType: desc.type },
+          });
+        } catch (e) {
+          this.log.error(`push ${uid} (${ev.imei}): ${(e as Error).message}`);
+        }
       }
     }
-  }
-
-  /** Tous les comptes avec accès ACTIF au device (device_access). */
-  private async usersForImei(imei: string): Promise<string[]> {
-    const row = await this.devices.getRowByImei(imei);
-    if (!row || !this.supa.client) return [];
-    const { data, error } = await this.supa.client
-      .from("device_access")
-      .select("user_id")
-      .eq("device_id", row.id)
-      .eq("status", "active");
-    if (error) {
-      this.log.error(`usersForImei ${imei}: ${error.message}`);
-      return [];
-    }
-    return (data ?? []).map((r) => r.user_id as string);
   }
 }

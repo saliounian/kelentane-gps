@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Clock, MapPin, Pause, Play, RotateCcw } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, ONLINE, Theme } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, TRACK } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
-import { fetchRoute, type Range } from "../data/reports";
-import { DateRangeSheet, Glass, GlassButton, Metric } from "../ui";
+import { fetchRoute } from "../data/reports";
+import { reverseGeocodeShort } from "../data/geocode";
+import { logError, toUserMessage } from "../data/errorMessages";
+import { DateRangeSheet, ErrorState, Glass, GlassButton, Metric, Skeleton } from "../ui";
 import { useVehicles } from "../data/useVehicles";
 import { useIconOverrides } from "../state/iconOverrides";
 import { VehicleGlyph } from "./map/VehicleGlyph";
@@ -17,7 +19,6 @@ import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { RoutePoint } from "../types/reports";
 
-const DAY_MS = 86400000;
 const fmtShort = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
 function haversine(a: RoutePoint, b: RoutePoint): number {
@@ -28,8 +29,16 @@ function haversine(a: RoutePoint, b: RoutePoint): number {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-const SPEEDS = { Lent: 0.4, Moyen: 0.9, Vite: 1.8 } as const;
+// §3 : vitesses de lecture recalibrées (~3-4× plus lentes que l'origine 0.4/0.9/1.8).
+// Nouveau « Vite » = ancien « Lent ». Tout se règle ici après test visuel terrain :
+// avancement par tick = PROGRESS_STEP × SPEEDS[mode], un tick toutes les TICK_MS.
+const SPEEDS = { Lent: 0.1, Moyen: 0.2, Vite: 0.4 } as const;
+const PROGRESS_STEP = 0.006; // fraction du trajet par tick, avant multiplicateur
+const TICK_MS = 40;
 type SpeedMode = keyof typeof SPEEDS;
+
+// §2 : période de l'historique. Bornes calculées en HEURE LOCALE (device/Dakar).
+type TrajRange = "today" | "week" | "custom";
 
 export function TrajectoryScreen() {
   const { t, dark } = useTheme();
@@ -39,14 +48,16 @@ export function TrajectoryScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "Traj">>();
   const [pts, setPts] = useState<RoutePoint[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true); // §5 : skeleton tant que l'historique charge
   const [progress, setProgress] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speedMode, setSpeedMode] = useState<SpeedMode>("Moyen");
   const [track, setTrack] = useState<LayoutRectangle | null>(null);
-  const [mode, setMode] = useState<Range>("7d");
+  const [mode, setMode] = useState<TrajRange>("today");
   const [customFrom, setCustomFrom] = useState<Date | null>(null);
   const [customTo, setCustomTo] = useState<Date | null>(null);
   const [perso, setPerso] = useState(false);
+  const [nonce, setNonce] = useState(0); // §5 : relance manuelle après erreur
   const [mapType, setMapType] = useState<MapType>("standard");
   const mapRef = useRef<MapView>(null);
   // Icône réelle du véhicule (cohérence carte) : résolue via la liste + override local.
@@ -57,18 +68,29 @@ export function TrajectoryScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
+      setLoading(true);
+      setError(null);
       try {
         let from: string;
         let to: string;
         if (mode === "custom") {
-          if (!customFrom || !customTo) return; // plage pas encore choisie
+          if (!customFrom || !customTo) {
+            setLoading(false);
+            return; // plage pas encore choisie
+          }
           from = customFrom.toISOString();
           to = customTo.toISOString();
         } else {
-          const days = mode === "30d" ? 30 : 7;
+          // §2 : bornes en heure LOCALE. Aujourd'hui = minuit local → maintenant ;
+          // Cette semaine = lundi 00:00 local → maintenant. `setHours(0,0,0,0)` opère
+          // dans le fuseau local de l'appareil ; `toISOString()` convertit en UTC pour l'API.
           const end = new Date();
-          const start = new Date(end.getTime() - (days - 1) * DAY_MS);
+          const start = new Date();
           start.setHours(0, 0, 0, 0);
+          if (mode === "week") {
+            const dow = (start.getDay() + 6) % 7; // 0 = lundi … 6 = dimanche
+            start.setDate(start.getDate() - dow);
+          }
           from = start.toISOString();
           to = end.toISOString();
         }
@@ -77,21 +99,25 @@ export function TrajectoryScreen() {
         setPts(r);
         setProgress(0);
         setPlaying(false);
-        setError(r.length ? null : tr("traj.noTrip"));
       } catch (e) {
-        if (alive) setError((e as Error).message);
+        if (alive) {
+          logError("TrajectoryScreen.fetchRoute", e);
+          setError(toUserMessage(e));
+        }
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.vehicleId, mode, customFrom, customTo]);
+  }, [params.vehicleId, mode, customFrom, customTo, nonce]);
 
   const customLabel = mode === "custom" && customFrom && customTo ? `${fmtShort(customFrom)}–${fmtShort(customTo)}` : tr("km.custom");
-  const chips: { id: Range; label: string }[] = [
-    { id: "7d", label: tr("km.d7") },
-    { id: "30d", label: tr("km.d30") },
+  const chips: { id: TrajRange; label: string }[] = [
+    { id: "today", label: tr("traj.today") },
+    { id: "week", label: tr("traj.week") },
     { id: "custom", label: customLabel },
   ];
 
@@ -99,14 +125,14 @@ export function TrajectoryScreen() {
     if (!playing || pts.length < 2) return;
     const id = setInterval(() => {
       setProgress((p) => {
-        const np = p + 0.006 * SPEEDS[speedMode];
+        const np = p + PROGRESS_STEP * SPEEDS[speedMode];
         if (np >= 1) {
           setPlaying(false);
           return 1;
         }
         return np;
       });
-    }, 40);
+    }, TICK_MS);
     return () => clearInterval(id);
   }, [playing, speedMode, pts.length]);
 
@@ -127,6 +153,28 @@ export function TrajectoryScreen() {
   const idx = pts.length ? Math.min(pts.length - 1, Math.round(progress * (pts.length - 1))) : 0;
   const cur = pts[idx];
   const coords = pts.map((p) => ({ latitude: p.lat, longitude: p.lng }));
+
+  // §1 : nom de lieu du point en cours. Adresse Traccar prioritaire (`cur.addr`,
+  // même source que le popup carte). Sinon repli géocodage inverse du SEUL point
+  // courant, debounced (~400 ms → pas d'appel par frame) + caché par coordonnée.
+  const [geoLabel, setGeoLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!cur || cur.addr) {
+      setGeoLabel(null);
+      return;
+    }
+    let alive = true;
+    const { lat, lng } = cur;
+    const id = setTimeout(() => {
+      void reverseGeocodeShort(lat, lng).then((label) => {
+        if (alive) setGeoLabel(label);
+      });
+    }, 400);
+    return () => {
+      alive = false;
+      clearTimeout(id);
+    };
+  }, [cur?.addr, cur?.lat, cur?.lng]);
   const glyphV = veh ? { iconKey: overrides[veh.id] ?? veh.iconKey, type: veh.type, color: veh.color } : null;
 
   const summary = useMemo(() => {
@@ -149,7 +197,7 @@ export function TrajectoryScreen() {
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       {/* Carte PLEIN ÉCRAN (fond) — POI + zoom/déplacement natifs préservés. */}
       <MapView ref={mapRef} provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
-        {coords.length > 1 ? <Polyline coordinates={coords} strokeColor={ONLINE} strokeWidth={4} /> : null}
+        {coords.length > 1 ? <Polyline coordinates={coords} strokeColor={TRACK} strokeWidth={4} /> : null}
         {cur ? (
           <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: 0.5 }}>
             {/* Vraie icône du véhicule (cohérence app) ; fallback point si pas encore chargée. */}
@@ -175,7 +223,7 @@ export function TrajectoryScreen() {
       {/* Contrôles en overlay flottant BAS. `box-none` : les gestes carte passent
           dans les vides ; seuls les panneaux/contrôles captent le toucher. */}
       <View pointerEvents="box-none" style={{ position: "absolute", left: 12, right: 12, bottom: insets.bottom + 12, gap: 10 }}>
-        {/* intervalle — même sélecteur que Kilométrage (7j / 30j / Perso) */}
+        {/* §2 : période — Aujourd'hui (minuit local) / Cette semaine (lundi 00:00 local) / Perso */}
         <View style={{ flexDirection: "row", gap: 8 }}>
           {chips.map((c) => {
             const on = mode === c.id;
@@ -209,11 +257,21 @@ export function TrajectoryScreen() {
               </View>
               <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
                 <MapPin size={13} color={cur.speed > 0 ? t.accentMuted : t.sub} />
-                <Text style={{ flex: 1, fontSize: 12.5, color: t.text, lineHeight: 18, fontFamily: font.body.regular }}>{cur.addr ?? `${cur.lat.toFixed(5)}, ${cur.lng.toFixed(5)}`}</Text>
+                <Text style={{ flex: 1, fontSize: 12.5, color: t.text, lineHeight: 18, fontFamily: font.body.regular }}>{cur.addr ?? geoLabel ?? tr("common.loading")}</Text>
               </View>
             </View>
+          ) : error ? (
+            // §4/§5 : erreur = message TRADUIT + action ; jamais de texte technique.
+            <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
+          ) : loading ? (
+            // §5 : chargement de l'historique = section entière → skeleton.
+            <View style={{ gap: 8, marginTop: 10 }}>
+              <Skeleton t={t} height={16} width="45%" />
+              <Skeleton t={t} height={16} width="80%" />
+            </View>
           ) : (
-            <Text style={{ color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{error ?? tr("common.loading")}</Text>
+            // Période sans aucun point : état VIDE (pas une erreur, pas de « Réessayer »).
+            <Text style={{ color: t.sub, marginTop: 10, fontFamily: font.body.regular }}>{tr("traj.noTrip")}</Text>
           )}
 
           {/* transport */}
