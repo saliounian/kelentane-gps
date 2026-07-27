@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import WebSocket from "ws";
 import { Subject } from "rxjs";
 import { TraccarService } from "../traccar/traccar.service";
+import { DevicesService } from "../supabase/devices.service";
 import type { TraccarDevice, TraccarPosition, TraccarEvent } from "../traccar/traccar.types";
 import { toVM } from "../vehicles/vehicle.mapper";
 import type { VehicleVM } from "../vehicles/vehicle.vm";
@@ -41,9 +42,16 @@ export class TraccarRealtimeService implements OnModuleInit, OnModuleDestroy {
   private stopped = false;
   private backoff = 2000;
   private readonly deviceById = new Map<number, TraccarDevice>();
+  /**
+   * Cache mémoire des IMEI dont le statut commercial est déjà réglé ('sold' confirmé
+   * OU IMEI inconnu de la base) → on ne ré-écrit PAS la base à chaque tick (§2).
+   * Un IMEI n'y entre qu'après un markSoldOnConnect sans erreur.
+   */
+  private readonly commercialSettled = new Set<string>();
 
   constructor(
     private readonly traccar: TraccarService,
+    private readonly devices: DevicesService,
     config: ConfigService,
   ) {
     this.baseUrl = (config.get<string>("TRACCAR_URL") ?? "http://localhost:8082").replace(/\/$/, "");
@@ -120,11 +128,17 @@ export class TraccarRealtimeService implements OnModuleInit, OnModuleDestroy {
     if (frame.positions?.length) {
       const now = new Date();
       const vms: VehicleVM[] = [];
+      const connectedImeis: string[] = [];
       for (const p of frame.positions) {
         const d = this.deviceById.get(p.deviceId);
-        if (d) vms.push(toVM(d, p, now));
+        if (d) {
+          vms.push(toVM(d, p, now));
+          if (d.uniqueId) connectedImeis.push(d.uniqueId);
+        }
       }
       if (vms.length) this.positions$.next(vms);
+      // Auto-passage stock→sold : une position = preuve de connexion (§2). Non bloquant.
+      void this.markConnected(connectedImeis);
     }
     if (frame.events?.length) {
       for (const event of frame.events) {
@@ -133,6 +147,22 @@ export class TraccarRealtimeService implements OnModuleInit, OnModuleDestroy {
         if (!d?.uniqueId) continue;
         this.events$.next({ event, imei: d.uniqueId, deviceName: d.name ?? d.uniqueId });
       }
+    }
+  }
+
+  /**
+   * Passe en 'sold' les IMEI encore en 'stock' à leur 1re position (§2). Cache mémoire
+   * `commercialSettled` → une seule écriture DB par IMEI et par process (les ticks
+   * suivants ne touchent plus la base). Idempotent et irréversible côté base.
+   */
+  async markConnected(imeis: Iterable<string>): Promise<void> {
+    if (!this.devices.enabled) return;
+    for (const imei of new Set(imeis)) {
+      if (this.commercialSettled.has(imei)) continue;
+      const res = await this.devices.markSoldOnConnect(imei);
+      if (res === "error") continue; // pas de cache → nouvelle tentative au prochain tick
+      this.commercialSettled.add(imei);
+      if (res === "flipped") this.log.log(`Device ${imei} → sold (1re connexion)`);
     }
   }
 }

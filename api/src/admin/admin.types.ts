@@ -1,5 +1,7 @@
 /** View-models des réponses admin. */
 
+export type CommercialStatus = "stock" | "sold";
+
 export interface AdminDevice {
   id: string;
   imei: string;
@@ -8,6 +10,30 @@ export interface AdminDevice {
   activeCount: number;
   revalidateCount: number;
   createdAt: string;
+  // Dimension commerciale (web/admin only) — distincte du online/offline Traccar.
+  commercialStatus: CommercialStatus;
+  firstConnectedAt: string | null;
+}
+
+/** Agrégat inventaire (§stats). N.B. online/offline Traccar N'EST PAS ici. */
+export interface DeviceStats {
+  stock: number;
+  sold: number;
+  total: number;
+}
+
+/** Données de la fiche device (PDF + QR générés côté web). */
+export interface DeviceCard {
+  imei: string;
+  name: string | null;
+  defaultPassword: string;
+  commercial_status: CommercialStatus;
+}
+
+export interface DeviceStatusResult {
+  imei: string;
+  commercialStatus: CommercialStatus;
+  firstConnectedAt: string | null;
 }
 
 export type BulkEnrollStatus = "created" | "exists" | "error";

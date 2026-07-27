@@ -125,6 +125,61 @@ describe("AdminService.promote", () => {
   });
 });
 
+describe("AdminService.listDevices (statut commercial)", () => {
+  it("mappe commercial_status / first_connected_at dans le VM", async () => {
+    const { service } = makeDeps([
+      {
+        data: [
+          { id: "d1", imei: "i1", name: "n", traccar_id: 5, created_at: "t", commercial_status: "sold", first_connected_at: "fca" },
+        ],
+      },
+      { data: [] }, // device_access
+    ]);
+    const [d] = await service.listDevices();
+    expect(d.commercialStatus).toBe("sold");
+    expect(d.firstConnectedAt).toBe("fca");
+  });
+});
+
+describe("AdminService.deviceStats", () => {
+  it("agrège stock / sold / total (sans online/offline Traccar)", async () => {
+    const { service } = makeDeps([
+      { data: [{ commercial_status: "stock" }, { commercial_status: "sold" }, { commercial_status: "sold" }] },
+    ]);
+    expect(await service.deviceStats()).toEqual({ stock: 1, sold: 2, total: 3 });
+  });
+});
+
+describe("AdminService.setCommercialStatus", () => {
+  it("corrige un statut (remet en stock, efface first_connected_at)", async () => {
+    const { service } = makeDeps([{ data: { imei: "i1", commercial_status: "stock", first_connected_at: null } }]);
+    const res = await service.setCommercialStatus("i1", "stock");
+    expect(res).toEqual({ imei: "i1", commercialStatus: "stock", firstConnectedAt: null });
+  });
+
+  it("404 si le device est introuvable", async () => {
+    const { service } = makeDeps([{ data: null }]);
+    await expect(service.setCommercialStatus("nope", "sold")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("400 si le statut est invalide", async () => {
+    const { service } = makeDeps();
+    await expect(service.setCommercialStatus("i1", "leased" as never)).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe("AdminService.deviceCard", () => {
+  it("renvoie les données fiche avec le mot de passe par défaut", async () => {
+    const { service } = makeDeps([{ data: { imei: "i1", name: "Boîtier", commercial_status: "stock" } }]);
+    expect(await service.deviceCard("i1")).toEqual({
+      imei: "i1",
+      name: "Boîtier",
+      defaultPassword: "123456",
+      commercial_status: "stock",
+    });
+  });
+});
+
 describe("AdminService.purgeTest", () => {
   const testList = {
     data: [

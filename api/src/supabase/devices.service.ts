@@ -17,7 +17,13 @@ export interface DeviceRow {
   iccid: string | null;
   owner_contact: string | null;
   device_password: string | null; // hash bcrypt — SECRET serveur, jamais exposé au VM
+  // Dimension COMMERCIALE (web/admin only — jamais mappée dans VehicleVM). Voir 0011.
+  commercial_status: "stock" | "sold";
+  first_connected_at: string | null;
 }
+
+/** Résultat de l'auto-passage stock→sold à la 1re connexion. */
+export type MarkSoldResult = "flipped" | "already" | "error";
 
 /** Patch autorisé depuis le mobile (champs éditables). */
 export interface DevicePatch {
@@ -199,6 +205,29 @@ export class DevicesService {
       throw error;
     }
     return data as DeviceRow;
+  }
+
+  /**
+   * Auto-passage stock→sold à la 1re connexion (§2). Écriture CONDITIONNELLE
+   * `WHERE commercial_status='stock'` : idempotente et irréversible (ne repasse
+   * jamais 'sold'→'stock'), et ne touche AUCUNE ligne si le device est déjà 'sold'.
+   * Retourne 'flipped' (basculé maintenant), 'already' (déjà sold / IMEI inconnu —
+   * rien à faire, sûr à mettre en cache), ou 'error' (ne pas mettre en cache).
+   */
+  async markSoldOnConnect(imei: string): Promise<MarkSoldResult> {
+    if (!this.supa.client) return "error";
+    const { data, error } = await this.supa.client
+      .from("devices")
+      .update({ commercial_status: "sold", first_connected_at: new Date().toISOString() })
+      .eq("imei", imei)
+      .eq("commercial_status", "stock")
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      this.log.error(`markSoldOnConnect ${imei}: ${error.message}`);
+      return "error";
+    }
+    return data ? "flipped" : "already";
   }
 
   /** Supprime le device (cascade shares/geofences via FK). Retourne traccar_id. */

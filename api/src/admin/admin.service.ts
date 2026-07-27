@@ -8,11 +8,17 @@ import type {
   AdminClientView,
   AdminDevice,
   BulkEnrollResult,
+  CommercialStatus,
+  DeviceCard,
+  DeviceStats,
+  DeviceStatusResult,
   PromoteResult,
   PurgeCandidate,
   PurgeResult,
   TransferResult,
 } from "./admin.types";
+
+const DEFAULT_DEVICE_PASSWORD = "123456";
 
 const BULK_MAX = 200;
 const BULK_CONCURRENCY = 4;
@@ -54,7 +60,7 @@ export class AdminService {
     const c = this.client();
     const { data: devices, error } = await c
       .from("devices")
-      .select("id, imei, name, traccar_id, created_at")
+      .select("id, imei, name, traccar_id, created_at, commercial_status, first_connected_at")
       .order("created_at", { ascending: true });
     if (error) throw new ServiceUnavailableException(error.message);
 
@@ -66,17 +72,82 @@ export class AdminService {
       if (bucket) bucket.set(a.device_id, (bucket.get(a.device_id) ?? 0) + 1);
     }
 
-    return ((devices ?? []) as { id: string; imei: string; name: string | null; traccar_id: number | null; created_at: string }[]).map(
-      (d) => ({
-        id: d.id,
-        imei: d.imei,
-        name: d.name,
-        traccarId: d.traccar_id,
-        activeCount: active.get(d.id) ?? 0,
-        revalidateCount: revalidate.get(d.id) ?? 0,
-        createdAt: d.created_at,
-      }),
-    );
+    return (
+      (devices ?? []) as {
+        id: string;
+        imei: string;
+        name: string | null;
+        traccar_id: number | null;
+        created_at: string;
+        commercial_status: CommercialStatus;
+        first_connected_at: string | null;
+      }[]
+    ).map((d) => ({
+      id: d.id,
+      imei: d.imei,
+      name: d.name,
+      traccarId: d.traccar_id,
+      activeCount: active.get(d.id) ?? 0,
+      revalidateCount: revalidate.get(d.id) ?? 0,
+      createdAt: d.created_at,
+      commercialStatus: d.commercial_status,
+      firstConnectedAt: d.first_connected_at,
+    }));
+  }
+
+  // ─── GET /admin/devices/stats — agrégat inventaire stock/sold ─────────────────
+  /** N.B. l'online/offline temps réel N'EST PAS ici : il vient de Traccar séparément. */
+  async deviceStats(): Promise<DeviceStats> {
+    const { data, error } = await this.client().from("devices").select("commercial_status");
+    if (error) throw new ServiceUnavailableException(error.message);
+    const rows = (data ?? []) as { commercial_status: CommercialStatus }[];
+    let sold = 0;
+    for (const r of rows) if (r.commercial_status === "sold") sold += 1;
+    return { stock: rows.length - sold, sold, total: rows.length };
+  }
+
+  // ─── PATCH /admin/devices/:imei/status — correction manuelle (rare) ───────────
+  /**
+   * Force le statut commercial (ex. remettre en 'stock' un device marqué vendu par
+   * erreur avant revente). Mettre 'sold' pose first_connected_at=now() si absent ;
+   * remettre 'stock' efface first_connected_at.
+   */
+  async setCommercialStatus(imei: string, status: CommercialStatus): Promise<DeviceStatusResult> {
+    if (status !== "stock" && status !== "sold") {
+      throw new BadRequestException("status doit valoir 'stock' ou 'sold'.");
+    }
+    const patch =
+      status === "sold"
+        ? { commercial_status: "sold", first_connected_at: new Date().toISOString() }
+        : { commercial_status: "stock", first_connected_at: null };
+    const { data, error } = await this.client()
+      .from("devices")
+      .update(patch)
+      .eq("imei", imei)
+      .select("imei, commercial_status, first_connected_at")
+      .maybeSingle();
+    if (error) throw new ServiceUnavailableException(error.message);
+    if (!data) throw new NotFoundException("Dispositif introuvable.");
+    const row = data as { imei: string; commercial_status: CommercialStatus; first_connected_at: string | null };
+    return { imei: row.imei, commercialStatus: row.commercial_status, firstConnectedAt: row.first_connected_at };
+  }
+
+  // ─── GET /admin/devices/:imei/card — données fiche (PDF + QR générés côté web) ─
+  async deviceCard(imei: string): Promise<DeviceCard> {
+    const { data, error } = await this.client()
+      .from("devices")
+      .select("imei, name, commercial_status")
+      .eq("imei", imei)
+      .maybeSingle();
+    if (error) throw new ServiceUnavailableException(error.message);
+    if (!data) throw new NotFoundException("Dispositif introuvable.");
+    const row = data as { imei: string; name: string | null; commercial_status: CommercialStatus };
+    return {
+      imei: row.imei,
+      name: row.name,
+      defaultPassword: DEFAULT_DEVICE_PASSWORD,
+      commercial_status: row.commercial_status,
+    };
   }
 
   // ─── ENDPOINT 2 — POST /admin/devices/:id/reset-password ─────────────────────

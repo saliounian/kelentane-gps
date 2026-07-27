@@ -34,6 +34,9 @@ interface PromoteBody {
 interface PurgeBody {
   confirm?: boolean;
 }
+interface StatusBody {
+  status?: unknown;
+}
 
 /** Routes d'administration plateforme — AuthGuard (JWT) + AdminGuard (is_admin). */
 @Controller("admin")
@@ -41,10 +44,31 @@ interface PurgeBody {
 export class AdminController {
   constructor(private readonly admin: AdminService) {}
 
-  /** GET /admin/devices — tous les devices + compteurs d'accès. */
+  /** GET /admin/devices — tous les devices + compteurs d'accès + statut commercial. */
   @Get("devices")
   listDevices() {
     return this.admin.listDevices();
+  }
+
+  /** GET /admin/devices/stats — agrégat inventaire { stock, sold, total }. */
+  @Get("devices/stats")
+  deviceStats() {
+    return this.admin.deviceStats();
+  }
+
+  /** GET /admin/devices/:imei/card — données fiche (PDF + QR côté web). */
+  @Get("devices/:imei/card")
+  deviceCard(@Param("imei") imei: string) {
+    return this.admin.deviceCard(imei.replace(/\s/g, ""));
+  }
+
+  /** PATCH /admin/devices/:imei/status — correction manuelle { status: 'stock'|'sold' }. */
+  @Patch("devices/:imei/status")
+  setCommercialStatus(@Param("imei") imei: string, @Body() body: StatusBody) {
+    if (body?.status !== "stock" && body?.status !== "sold") {
+      throw new HttpException("Body attendu : { status: 'stock' | 'sold' }", HttpStatus.BAD_REQUEST);
+    }
+    return this.admin.setCommercialStatus(imei.replace(/\s/g, ""), body.status);
   }
 
   /** POST /admin/devices/:id/reset-password — :id = traccar_id. */
