@@ -36,3 +36,14 @@ export interface RoutePoint {
   time: string;
   addr: string | null;
 }
+
+/** Arrêt (stationnement) — miroir de StopPoint (api/src/reports/reports.types.ts).
+ *  lat/lng = 0 → position absente : ne pas poser de marqueur. */
+export interface StopPoint {
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  startTime: string; // arrivée (début de l'arrêt), ISO
+  endTime: string | null; // départ (fin de l'arrêt / reprise), ISO
+  duration: number; // durée de l'arrêt en ms
+}

@@ -233,7 +233,11 @@
     "fast": "Fast",
     "noTrip": "No trip in this period",
     "today": "Today",
-    "week": "This week"
+    "week": "This week",
+    "stops": "Stops",
+    "stopLabel": "Stop",
+    "parking": "parked",
+    "noAddress": "Address unavailable"
   },
   "geo": {
     "title": "Geofence",

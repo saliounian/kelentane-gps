@@ -1,5 +1,5 @@
 import { request } from "./api";
-import type { KmReport, RoutePoint, StatsReport } from "../types/reports";
+import type { KmReport, RoutePoint, StatsReport, StopPoint } from "../types/reports";
 
 export type Range = "7d" | "30d" | "custom";
 
@@ -19,4 +19,12 @@ export function fetchRoute(id: number, from?: string, to?: string): Promise<Rout
   if (from) q.set("from", from);
   if (to) q.set("to", to);
   return request<RoutePoint[]>(`/vehicles/${id}/route?${q.toString()}`);
+}
+
+/** Arrêts (stationnements) sur la période — proxy du rapport ReportStops de Traccar. */
+export function fetchStops(id: number, from?: string, to?: string): Promise<StopPoint[]> {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  return request<StopPoint[]>(`/vehicles/${id}/stops?${q.toString()}`);
 }

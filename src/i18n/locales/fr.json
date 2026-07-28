@@ -233,7 +233,11 @@
     "fast": "Vite",
     "noTrip": "Aucun trajet sur la période",
     "today": "Aujourd'hui",
-    "week": "Cette semaine"
+    "week": "Cette semaine",
+    "stops": "Arrêts",
+    "stopLabel": "Arrêt",
+    "parking": "de stationnement",
+    "noAddress": "Adresse indisponible"
   },
   "geo": {
     "title": "Géofence",

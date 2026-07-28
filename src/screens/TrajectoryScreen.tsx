@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LayoutRectangle, Pressable, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
+import MapView, { Callout, Marker, Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Clock, MapPin, Pause, Play, RotateCcw } from "lucide-react-native";
-import { ACCENT, ALERT, hexA, LIME_ON, TRACK } from "../theme/tokens";
+import { ACCENT, ALERT, hexA, LIME_ON, PARKED, TRACK } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
-import { fetchRoute } from "../data/reports";
+import { fetchRoute, fetchStops } from "../data/reports";
 import { reverseGeocodeShort } from "../data/geocode";
 import { logError, toUserMessage } from "../data/errorMessages";
 import { DateRangeSheet, ErrorState, Glass, GlassButton, Metric, Skeleton } from "../ui";
@@ -17,9 +17,57 @@ import { useIconOverrides } from "../state/iconOverrides";
 import { VehicleGlyph } from "./map/VehicleGlyph";
 import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
-import type { RoutePoint } from "../types/reports";
+import type { RoutePoint, StopPoint } from "../types/reports";
 
 const fmtShort = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+// Fuseau métier : Sénégal = GMT+0 toute l'année (pas d'heure d'été). Les horodatages
+// route/arrêts (ISO UTC de Traccar) sont affichés figés sur ce fuseau, indépendamment
+// du fuseau de l'appareil — sinon un device réglé hors Dakar afficherait des heures
+// décalées. Intl.timeZone en priorité ; repli sur l'heure UTC (== heure locale Dakar).
+const DAKAR_TZ = "Africa/Dakar";
+
+// Heure locale Sénégal 24h « 11h20 ». null/invalide → « — ».
+const fmtHm = (iso: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const p = (n: number) => String(n).padStart(2, "0");
+  try {
+    return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: DAKAR_TZ })
+      .format(d)
+      .replace(":", "h");
+  } catch {
+    return `${p(d.getUTCHours())}h${p(d.getUTCMinutes())}`; // Dakar == UTC
+  }
+};
+
+// Date + heure lisibles « 14/07 09:32 » figées sur l'heure locale Sénégal.
+const fmtDateTimeDakar = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  try {
+    return new Intl.DateTimeFormat("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: DAKAR_TZ,
+    }).format(d);
+  } catch {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`; // Dakar == UTC
+  }
+};
+
+// Durée d'arrêt lisible depuis des ms : « 10 h 51 » (≥ 1 h) ou « 7 min » (parité web fmtDuration).
+const fmtStopDuration = (ms: number): string => {
+  const totalMin = Math.round(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return h > 0 ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
+};
 
 function haversine(a: RoutePoint, b: RoutePoint): number {
   const R = 6371;
@@ -47,6 +95,7 @@ export function TrajectoryScreen() {
   const nav = useNavigation();
   const { params } = useRoute<RouteProp<RootStackParamList, "Traj">>();
   const [pts, setPts] = useState<RoutePoint[]>([]);
+  const [stops, setStops] = useState<StopPoint[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // §5 : skeleton tant que l'historique charge
   const [progress, setProgress] = useState(0);
@@ -94,6 +143,11 @@ export function TrajectoryScreen() {
           from = start.toISOString();
           to = end.toISOString();
         }
+        // Arrêts (même véhicule / même période) — chargés en parallèle, sans bloquer
+        // le rejeu du trajet : un échec du rapport stops vide juste la liste de marqueurs.
+        fetchStops(params.vehicleId, from, to)
+          .then((s) => alive && setStops(s))
+          .catch(() => alive && setStops([]));
         const r = await fetchRoute(params.vehicleId, from, to);
         if (!alive) return;
         setPts(r);
@@ -208,6 +262,59 @@ export function TrajectoryScreen() {
             )}
           </Marker>
         ) : null}
+
+        {/* Arrêts (stationnements) : pastille ambre « P » distincte du tracé et du
+            véhicule. lat/lng = 0 → position absente : pas de marqueur (contrat StopPoint).
+            Au tap : callout natif avec intervalle horaire, durée et adresse si dispo. */}
+        {stops
+          .filter((s) => s.latitude !== 0 || s.longitude !== 0)
+          .map((s, i) => (
+            <Marker
+              key={`stop-${s.startTime}-${i}`}
+              coordinate={{ latitude: s.latitude, longitude: s.longitude }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: PARKED,
+                  borderWidth: 2.5,
+                  borderColor: "#fff",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#101513",
+                  shadowOpacity: 0.35,
+                  shadowRadius: 3,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 3,
+                }}
+              >
+                <Text style={{ color: "#fff", fontSize: 12, fontFamily: font.body.bold }}>P</Text>
+              </View>
+              <Callout tooltip={false}>
+                <View style={{ minWidth: 190, paddingVertical: 2, paddingHorizontal: 2 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: PARKED, alignItems: "center", justifyContent: "center" }}>
+                      <Pause size={9} color="#fff" fill="#fff" />
+                    </View>
+                    <Text style={{ fontSize: 15, color: "#101513", fontFamily: font.body.semibold }}>{tr("traj.stopLabel")}</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: "#5C655F", fontFamily: font.mono.regular }}>
+                    {fmtHm(s.startTime)} → {fmtHm(s.endTime)}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: "#101513", marginTop: 2, fontFamily: font.body.semibold }}>
+                    {fmtStopDuration(s.duration)} {tr("traj.parking")}
+                  </Text>
+                  {s.address ? (
+                    <Text style={{ fontSize: 12.5, color: "#5C655F", marginTop: 3, lineHeight: 17, fontFamily: font.body.regular }}>{s.address}</Text>
+                  ) : null}
+                </View>
+              </Callout>
+            </Marker>
+          ))}
       </MapView>
 
       {/* Retour (overlay haut) */}
@@ -253,7 +360,7 @@ export function TrajectoryScreen() {
             <View style={{ marginTop: 10, padding: 10, borderRadius: 12, backgroundColor: t.glass, borderWidth: 1, borderColor: t.line }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Clock size={12} color={t.sub} />
-                <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.mono.regular }}>{new Date(cur.time).toLocaleString("fr-FR")}</Text>
+                <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.mono.regular }}>{fmtDateTimeDakar(cur.time)}</Text>
               </View>
               <View style={{ flexDirection: "row", gap: 6, marginTop: 6 }}>
                 <MapPin size={13} color={cur.speed > 0 ? t.accentMuted : t.sub} />
@@ -306,6 +413,7 @@ export function TrajectoryScreen() {
           <Metric t={t} label={tr("traj.distance")} value={summary.dist} unit="km" />
           <Metric t={t} label={tr("traj.duration")} value={summary.dur} />
           <Metric t={t} label={tr("traj.maxSpeed")} value={`${summary.max}`} unit="km/h" />
+          <Metric t={t} label={tr("traj.stops")} value={`${stops.length}`} />
         </View>
       </View>
 
