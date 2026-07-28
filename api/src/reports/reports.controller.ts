@@ -2,7 +2,7 @@ import { Controller, Get, HttpException, HttpStatus, Param, ParseIntPipe, Query,
 import { ReportsService } from "./reports.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser, type AuthUser } from "../auth/current-user";
-import type { KmReport, RoutePoint, StatsReport } from "./reports.types";
+import type { KmReport, RoutePoint, StatsReport, StopPoint } from "./reports.types";
 
 @Controller("vehicles")
 @UseGuards(AuthGuard)
@@ -49,6 +49,21 @@ export class ReportsController {
     const day = from && to ? { from, to } : this.today();
     try {
       return await this.reports.route(id, day.from, day.to, user.id);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  @Get(":id/stops")
+  async stops(
+    @Param("id", ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ): Promise<StopPoint[]> {
+    const day = from && to ? { from, to } : this.today();
+    try {
+      return await this.reports.stops(id, day, user.id);
     } catch (e) {
       throw this.wrap(e);
     }

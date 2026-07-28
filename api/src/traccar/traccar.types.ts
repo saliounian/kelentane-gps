@@ -49,8 +49,11 @@ export interface TraccarTrip {
 
 export interface TraccarStop {
   deviceId: number;
-  duration: number; // ms
-  startTime: string;
+  duration: number; // ms (immobilité)
+  startTime: string; // arrivée (début de l'arrêt)
+  endTime?: string; // départ (fin de l'arrêt / reprise) — présent dans ReportStops
+  latitude?: number; // position de l'arrêt
+  longitude?: number;
   address?: string | null;
 }
 

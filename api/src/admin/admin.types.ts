@@ -36,6 +36,17 @@ export interface DeviceStatusResult {
   firstConnectedAt: string | null;
 }
 
+/** Un compte ayant un accès à un device (GET /admin/devices/:imei/accounts). */
+export interface DeviceAccountAccess {
+  username: string | null;
+  name: string | null;
+  role: "consultation" | "action";
+  status: "active" | "revalidate";
+  is_admin: boolean;
+  /** created_at de la ligne device_access = date d'octroi de l'accès. */
+  granted_at: string;
+}
+
 export type BulkEnrollStatus = "created" | "exists" | "error";
 export interface BulkEnrollResult {
   imei: string;

@@ -62,6 +62,12 @@ export class AdminController {
     return this.admin.deviceCard(imei.replace(/\s/g, ""));
   }
 
+  /** GET /admin/devices/:imei/accounts — comptes ayant accès (détail nominatif). */
+  @Get("devices/:imei/accounts")
+  deviceAccounts(@Param("imei") imei: string) {
+    return this.admin.deviceAccounts(imei.replace(/\s/g, ""));
+  }
+
   /** PATCH /admin/devices/:imei/status — correction manuelle { status: 'stock'|'sold' }. */
   @Patch("devices/:imei/status")
   setCommercialStatus(@Param("imei") imei: string, @Body() body: StatusBody) {

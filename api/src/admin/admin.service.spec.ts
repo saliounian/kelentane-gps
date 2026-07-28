@@ -180,6 +180,46 @@ describe("AdminService.deviceCard", () => {
   });
 });
 
+describe("AdminService.deviceAccounts", () => {
+  it("device avec plusieurs accès → liste nominative complète (jointure clients)", async () => {
+    const { service, devices } = makeDeps([
+      {
+        data: [
+          { user_id: "u1", role: "action", status: "active", created_at: "t1" },
+          { user_id: "u2", role: "consultation", status: "revalidate", created_at: "t2" },
+        ],
+      },
+      {
+        data: [
+          { id: "u1", username: "alice", name: "Alice", is_admin: true },
+          { id: "u2", username: "bob", name: "Bob", is_admin: false },
+        ],
+      },
+    ]);
+    devices.getRowByImei.mockResolvedValue({ id: "dev-row", traccar_id: 10 });
+
+    const res = await service.deviceAccounts("868720065811725");
+
+    expect(devices.getRowByImei).toHaveBeenCalledWith("868720065811725");
+    expect(res).toEqual([
+      { username: "alice", name: "Alice", role: "action", status: "active", is_admin: true, granted_at: "t1" },
+      { username: "bob", name: "Bob", role: "consultation", status: "revalidate", is_admin: false, granted_at: "t2" },
+    ]);
+  });
+
+  it("device sans accès → liste vide (pas de requête clients, pas d'erreur)", async () => {
+    const { service, devices } = makeDeps([{ data: [] }]);
+    devices.getRowByImei.mockResolvedValue({ id: "dev-row", traccar_id: 10 });
+    expect(await service.deviceAccounts("868720065811725")).toEqual([]);
+  });
+
+  it("IMEI inexistant → 404", async () => {
+    const { service, devices } = makeDeps();
+    devices.getRowByImei.mockResolvedValue(null);
+    await expect(service.deviceAccounts("nope")).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe("AdminService.purgeTest", () => {
   const testList = {
     data: [

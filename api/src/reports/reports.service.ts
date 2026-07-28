@@ -2,10 +2,19 @@ import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/commo
 import { TraccarService } from "../traccar/traccar.service";
 import { AccessService } from "../supabase/access.service";
 import type { TraccarSummary } from "../traccar/traccar.types";
-import type { DayKm, KmReport, RoutePoint, StatsReport } from "./reports.types";
+import type { DayKm, KmReport, RoutePoint, StatsReport, StopPoint } from "./reports.types";
 
 const KMH = 1.852; // nœuds → km/h
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Durée minimale d'un arrêt affiché (2 min). Traccar calcule les arrêts avec son
+ * propre seuil serveur `report.trips.minimalParkingDuration` (défaut 300 s = 5 min),
+ * NON réglable par requête. Ce plancher API n'écarte que les arrêts trop courts si
+ * Traccar est plus permissif ; pour réellement capturer les arrêts de 2–5 min, il
+ * faut baisser `minimalParkingDuration` à 120 s côté serveur Traccar (voir README/rapport).
+ */
+const MIN_STOP_MS = 120_000;
 
 @Injectable()
 export class ReportsService {
@@ -114,6 +123,26 @@ export class ReportsService {
       time: p.fixTime,
       addr: p.address ?? null,
     }));
+  }
+
+  /**
+   * Arrêts (stationnements) — proxy du rapport ReportStops natif de Traccar
+   * (`GET /api/reports/stops`). Même contrôle d'accès que les autres rapports.
+   * Filtre les arrêts < 2 min (MIN_STOP_MS) et normalise en StopPoint.
+   */
+  async stops(deviceId: number, range: { from: string; to: string }, userId: string): Promise<StopPoint[]> {
+    await this.assertAccess(userId, deviceId);
+    const raw = await this.traccar.getStops(deviceId, range.from, range.to);
+    return raw
+      .filter((s) => s.duration >= MIN_STOP_MS)
+      .map((s) => ({
+        latitude: s.latitude ?? 0,
+        longitude: s.longitude ?? 0,
+        address: s.address ?? null,
+        startTime: s.startTime,
+        endTime: s.endTime ?? null,
+        duration: s.duration,
+      }));
   }
 
   /** Séquence de jours [from..to] avec km, en zippant les résumés daily par date. */

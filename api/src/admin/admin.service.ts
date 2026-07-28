@@ -9,6 +9,7 @@ import type {
   AdminDevice,
   BulkEnrollResult,
   CommercialStatus,
+  DeviceAccountAccess,
   DeviceCard,
   DeviceStats,
   DeviceStatusResult,
@@ -148,6 +149,62 @@ export class AdminService {
       defaultPassword: DEFAULT_DEVICE_PASSWORD,
       commercial_status: row.commercial_status,
     };
+  }
+
+  // ─── GET /admin/devices/:imei/accounts — comptes ayant accès (nominatif) ──────
+  /**
+   * Détail nominatif des comptes ayant un accès au device. Résout d'abord
+   * imei → device_id (404 si l'IMEI n'existe pas), puis joint device_access ↔ clients
+   * via le client service_role (hors RLS, comme les autres endpoints admin).
+   *
+   * Deux requêtes plutôt qu'un embed PostgREST : device_access porte DEUX FK vers
+   * clients (`user_id` ET `granted_by`), ce qui rend `clients!inner(...)` ambigu.
+   * On reprend donc le style à deux temps de listDevices.
+   */
+  async deviceAccounts(imei: string): Promise<DeviceAccountAccess[]> {
+    const device = await this.devices.getRowByImei(imei);
+    if (!device) throw new NotFoundException("Dispositif introuvable.");
+
+    const c = this.client();
+    const { data: access, error } = await c
+      .from("device_access")
+      .select("user_id, role, status, created_at")
+      .eq("device_id", device.id)
+      .order("created_at", { ascending: true });
+    if (error) throw new ServiceUnavailableException(error.message);
+
+    const rows = (access ?? []) as {
+      user_id: string;
+      role: "consultation" | "action";
+      status: "active" | "revalidate";
+      created_at: string;
+    }[];
+    if (rows.length === 0) return [];
+
+    const { data: clients, error: cErr } = await c
+      .from("clients")
+      .select("id, username, name, is_admin")
+      .in("id", rows.map((r) => r.user_id));
+    if (cErr) throw new ServiceUnavailableException(cErr.message);
+
+    const byId = new Map(
+      ((clients ?? []) as { id: string; username: string | null; name: string | null; is_admin: boolean }[]).map((u) => [
+        u.id,
+        u,
+      ]),
+    );
+
+    return rows.map((r) => {
+      const u = byId.get(r.user_id);
+      return {
+        username: u?.username ?? null,
+        name: u?.name ?? null,
+        role: r.role,
+        status: r.status,
+        is_admin: u?.is_admin ?? false,
+        granted_at: r.created_at,
+      };
+    });
   }
 
   // ─── ENDPOINT 2 — POST /admin/devices/:id/reset-password ─────────────────────

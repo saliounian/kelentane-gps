@@ -36,3 +36,13 @@ export interface RoutePoint {
   time: string; // ISO
   addr: string | null;
 }
+
+/** Arrêt (stationnement) — proxy du rapport ReportStops natif de Traccar. */
+export interface StopPoint {
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  startTime: string; // arrivée (début de l'arrêt), ISO
+  endTime: string | null; // départ (fin de l'arrêt / reprise), ISO
+  duration: number; // durée de l'arrêt en ms
+}
