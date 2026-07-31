@@ -6,9 +6,9 @@ import { ACCENT, ALERT, LIME_ON, ONLINE } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { useVehicles } from "../data/useVehicles";
-import { fetchStats } from "../data/reports";
+import { fetchStats, type Range } from "../data/reports";
 import { toUserMessage } from "../data/errorMessages";
-import { BarChart, ErrorState, Glass, Metric, Skeleton } from "../ui";
+import { BarChart, ErrorState, Glass, Metric, PeriodSelector, Skeleton } from "../ui";
 import type { StatsReport } from "../types/reports";
 
 export function StatsScreen() {
@@ -17,6 +17,9 @@ export function StatsScreen() {
   const insets = useSafeAreaInsets();
   const { vehicles } = useVehicles();
   const [vid, setVid] = useState<number | null>(null);
+  const [mode, setMode] = useState<Range>("7d");
+  const [customFrom, setCustomFrom] = useState<Date | null>(null);
+  const [customTo, setCustomTo] = useState<Date | null>(null);
   const [data, setData] = useState<StatsReport | null>(null);
   const [sel, setSel] = useState(6);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,14 @@ export function StatsScreen() {
     let alive = true;
     (async () => {
       try {
-        const r = await fetchStats(vid, "7d");
+        let from: string | undefined;
+        let to: string | undefined;
+        if (mode === "custom") {
+          if (!customFrom || !customTo) return; // plage pas encore choisie
+          from = customFrom.toISOString();
+          to = customTo.toISOString();
+        }
+        const r = await fetchStats(vid, mode, from, to);
         if (!alive) return;
         setData(r);
         setSel(Math.max(0, r.days.length - 1));
@@ -43,7 +53,7 @@ export function StatsScreen() {
     return () => {
       alive = false;
     };
-  }, [vid, nonce]);
+  }, [vid, mode, customFrom, customTo, nonce]);
 
   const dayKm = data?.days[sel]?.km ?? 0;
   const dayLabel = useMemo(() => {
@@ -78,6 +88,19 @@ export function StatsScreen() {
           })}
         </ScrollView>
 
+        {/* période */}
+        <PeriodSelector
+          t={t}
+          mode={mode}
+          customFrom={customFrom}
+          customTo={customTo}
+          onChange={(m, from, to) => {
+            setMode(m);
+            setCustomFrom(from);
+            setCustomTo(to);
+          }}
+        />
+
         {error ? (
           <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
         ) : !data ? (
@@ -108,14 +131,14 @@ export function StatsScreen() {
 
             {/* résumé hebdo */}
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <Metric t={t} label={tr("stats.weekTotal")} value={`${data.total}`} unit="km" />
+              <Metric t={t} label={tr("stats.periodTotal")} value={`${data.total}`} unit="km" />
               <Metric t={t} label={tr("stats.avgPerDay")} value={`${data.avgPerDay}`} unit="km" />
               <Metric t={t} label={tr("stats.maxDay")} value={`${data.maxDay}`} unit="km" />
             </View>
 
             {/* activité */}
             <Text style={{ fontSize: 13, color: t.sub, paddingLeft: 4, marginTop: 4, fontFamily: font.body.bold }}>
-              {tr("stats.weekActivity")}
+              {tr("stats.periodActivity")}
             </Text>
             {a ? (
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -128,7 +151,7 @@ export function StatsScreen() {
                 <View style={{ width: "48%" }}>
                   <Metric t={t} label={tr("stats.over")} value={`${a.over}`} valueColor={a.over > 0 ? ALERT : ONLINE} small />
                 </View>
-                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.activeDays")} value={`${a.days}/7`} small /></View>
+                <View style={{ width: "48%" }}><Metric t={t} label={tr("stats.activeDays")} value={`${a.days}/${data.days.length}`} small /></View>
               </View>
             ) : null}
           </>

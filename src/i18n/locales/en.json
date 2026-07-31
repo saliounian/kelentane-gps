@@ -210,10 +210,10 @@
   },
   "stats": {
     "title": "Statistics",
-    "weekTotal": "Week total",
+    "periodTotal": "Period total",
     "avgPerDay": "Avg / day",
     "maxDay": "Max day",
-    "weekActivity": "Week activity",
+    "periodActivity": "Period activity",
     "drive": "Driving time",
     "idle": "Idle time",
     "trips": "Trips",

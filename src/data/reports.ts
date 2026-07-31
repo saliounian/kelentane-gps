@@ -10,8 +10,11 @@ export function fetchKm(id: number, range: Range, from?: string, to?: string): P
   return request<KmReport>(`/vehicles/${id}/km?${q.toString()}`);
 }
 
-export function fetchStats(id: number, range: Range = "7d"): Promise<StatsReport> {
-  return request<StatsReport>(`/vehicles/${id}/stats?range=${range}`);
+export function fetchStats(id: number, range: Range = "7d", from?: string, to?: string): Promise<StatsReport> {
+  const q = new URLSearchParams({ range });
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  return request<StatsReport>(`/vehicles/${id}/stats?${q.toString()}`);
 }
 
 export function fetchRoute(id: number, from?: string, to?: string): Promise<RoutePoint[]> {

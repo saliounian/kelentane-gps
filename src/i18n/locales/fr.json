@@ -210,10 +210,10 @@
   },
   "stats": {
     "title": "Statistiques",
-    "weekTotal": "Total semaine",
+    "periodTotal": "Total période",
     "avgPerDay": "Moyenne / j",
     "maxDay": "Jour max",
-    "weekActivity": "Activité de la semaine",
+    "periodActivity": "Activité de la période",
     "drive": "Temps de conduite",
     "idle": "Temps à l'arrêt",
     "trips": "Trajets",

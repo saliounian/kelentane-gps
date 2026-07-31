@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
-import { ACCENT, LIME_ON } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { fetchKm, type Range } from "../data/reports";
 import { toUserMessage } from "../data/errorMessages";
-import { BarChart, DateRangeSheet, ErrorState, Glass, GlassButton, Skeleton } from "../ui";
+import { BarChart, ErrorState, Glass, GlassButton, PeriodSelector, Skeleton } from "../ui";
 import type { RootStackParamList } from "../navigation/types";
 import type { KmReport } from "../types/reports";
-
-const fmtShort = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
 export function KmScreen() {
   const { t, dark } = useTheme();
@@ -24,7 +21,6 @@ export function KmScreen() {
   const [mode, setMode] = useState<Range>("7d");
   const [customFrom, setCustomFrom] = useState<Date | null>(null);
   const [customTo, setCustomTo] = useState<Date | null>(null);
-  const [perso, setPerso] = useState(false);
   const [data, setData] = useState<KmReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
@@ -54,13 +50,6 @@ export function KmScreen() {
     };
   }, [params.vehicleId, mode, customFrom, customTo, nonce]);
 
-  const customLabel = mode === "custom" && customFrom && customTo ? `${fmtShort(customFrom)}–${fmtShort(customTo)}` : tr("km.custom");
-  const chips: { id: Range; label: string }[] = [
-    { id: "7d", label: tr("km.d7") },
-    { id: "30d", label: tr("km.d30") },
-    { id: "custom", label: customLabel },
-  ];
-
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 40, paddingHorizontal: 14, gap: 12 }}>
@@ -70,20 +59,17 @@ export function KmScreen() {
         </View>
 
         {/* intervalle */}
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {chips.map((c) => {
-            const on = mode === c.id;
-            return (
-              <Pressable
-                key={c.id}
-                onPress={() => (c.id === "custom" ? setPerso(true) : setMode(c.id))}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: on ? ACCENT : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
-              >
-                <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{c.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PeriodSelector
+          t={t}
+          mode={mode}
+          customFrom={customFrom}
+          customTo={customTo}
+          onChange={(m, from, to) => {
+            setMode(m);
+            setCustomFrom(from);
+            setCustomTo(to);
+          }}
+        />
 
         {error ? (
           <ErrorState t={t} message={error} onRetry={() => setNonce((n) => n + 1)} />
@@ -129,20 +115,6 @@ export function KmScreen() {
           </>
         )}
       </ScrollView>
-
-      <DateRangeSheet
-        t={t}
-        visible={perso}
-        initialFrom={customFrom}
-        initialTo={customTo}
-        onApply={(from, to) => {
-          setCustomFrom(from);
-          setCustomTo(to);
-          setMode("custom");
-          setPerso(false);
-        }}
-        onClose={() => setPerso(false)}
-      />
     </View>
   );
 }
