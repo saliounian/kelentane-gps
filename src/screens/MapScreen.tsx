@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Linking, Text, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import MapView, { Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import ClusteredMapView from "react-native-map-clustering";
 import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, BatteryCharging, Clock, Crosshair, Grid2x2Plus, PersonStanding, Power, Radar, Route, Search } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, OFFLINE, ONLINE, PARKED, TRACK } from "../theme/tokens";
@@ -20,12 +20,37 @@ import { iconForVehicle } from "../icons/vehicleIcons";
 import { ActionBtn, GlassButton, KMonogram, Metric, StatusPill } from "../ui";
 import { VehicleMarker } from "./map/VehicleMarker";
 import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
-import type { RootStackParamList } from "../navigation/types";
+import { getLastConsulted, getLastEnrolled, setLastConsulted } from "../data/focusPrefs";
+import type { RootStackParamList, TabParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
 const DAKAR: Region = { latitude: 14.6928, longitude: -17.4467, latitudeDelta: 0.09, longitudeDelta: 0.09 };
-const LAST_VEHICLE_KEY = "map.lastVehicle";
+const FOCUS: Pick<Region, "latitudeDelta" | "longitudeDelta"> = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 const STALE_MS = 6 * 60 * 60 * 1000; // §1 : donnée jugée obsolète au-delà de 6 h sans MAJ
+
+/**
+ * §3 — sélection initiale au montage, ordre de priorité :
+ *  (a) dernier device ajouté : `createdAt` desc si l'API l'expose, sinon proxy local
+ *      `lastEnrolled` (dernier enrôlement sur CET appareil) ;
+ *  (b) sinon dernier consulté persisté ;
+ *  (c) sinon premier de la liste.
+ * Cadrage = zoom direct sur ce véhicule (jamais fitToCoordinates sur la flotte).
+ */
+function pickInitial(
+  vehicles: VehicleVM[],
+  lastEnrolledId: number | null,
+  lastConsultedId: number | null,
+): number | null {
+  if (!vehicles.length) return null;
+  const has = (id: number | null) => id != null && vehicles.some((v) => v.id === id);
+  const dated = vehicles.filter((v) => v.createdAt);
+  if (dated.length) {
+    return dated.reduce((a, b) => (String(a.createdAt) >= String(b.createdAt) ? a : b)).id;
+  }
+  if (has(lastEnrolledId)) return lastEnrolledId;
+  if (has(lastConsultedId)) return lastConsultedId;
+  return vehicles[0].id;
+}
 
 /** Donnée périmée : dernière position trop ancienne (à ne pas confondre avec « récent »). */
 function isStale(lastSeen: string | null): boolean {
@@ -47,38 +72,93 @@ export function MapScreen() {
   const { units } = usePrefs();
   const insets = useSafeAreaInsets();
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // Même objet de navigation, typé onglet : sert à effacer le param `vehicleId`
+  // du deep-link (§4) sans casser le typage stack utilisé pour les push d'écrans.
+  const tabNav = useNavigation<BottomTabNavigationProp<TabParamList, "map">>();
+  const route = useRoute<RouteProp<TabParamList, "map">>();
+  const routeVehicleId = route.params?.vehicleId ?? null;
   const focused = useIsFocused();
   const [locGranted, setLocGranted] = useState(false);
   const { vehicles, error } = useVehicles();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [mapType, setMapType] = useState<MapType>("standard");
   const [showCard, setShowCard] = useState(true);
-  const [restored, setRestored] = useState(false);
-  const [traceOn, setTraceOn] = useState(false); // §3 : tracé temps réel du véhicule suivi
+  const [mapReady, setMapReady] = useState(false);
+  const [prefs, setPrefs] = useState<{ enrolled: number | null; consulted: number | null } | null>(null);
+  const [traceOn, setTraceOn] = useState(false); // §6 : tracé temps réel du véhicule actif
   const [trace, setTrace] = useState<{ latitude: number; longitude: number }[]>([]);
   const [addrCache, setAddrCache] = useState<Record<number, string>>({}); // adresses reverse-geocodées par véhicule
   const traceRef = useRef<{ latitude: number; longitude: number; t: number }[]>([]);
   const mapRef = useRef<MapView>(null);
-
-  // §1 : restaurer le DERNIER véhicule consulté (popup unique par défaut).
-  useEffect(() => {
-    AsyncStorage.getItem(LAST_VEHICLE_KEY).then((v) => {
-      if (v) setActiveId(Number(v));
-      setRestored(true);
-    });
-  }, []);
-
-  // Défaut / garde : si aucun véhicule actif valide → premier de la flotte.
-  useEffect(() => {
-    if (!restored || !vehicles.length) return;
-    setActiveId((cur) => (cur != null && vehicles.some((x) => x.id === cur) ? cur : vehicles[0].id));
-  }, [restored, vehicles]);
+  // Liste courante lue par `selectVehicle` sans le refaire dépendre de `vehicles`
+  // (handler stable → effets de sélection déterministes).
+  const vehiclesRef = useRef<VehicleVM[]>(vehicles);
+  vehiclesRef.current = vehicles;
+  const didInitRef = useRef(false); // sélection initiale (§3) faite une seule fois
+  const framedRef = useRef(false); // 1er cadrage caméra (attend carte prête)
 
   const active = useMemo<VehicleVM | null>(
     () => vehicles.find((v) => v.id === activeId) ?? null,
     [vehicles, activeId],
   );
   const activeCount = vehicles.filter((v) => v.status !== "offline").length;
+
+  // Cadrage caméra : zoom direct sur un véhicule (jamais fitToCoordinates flotte).
+  const frameVehicle = useCallback((v: VehicleVM | null) => {
+    if (!v?.lat || !v?.lng) return;
+    mapRef.current?.animateToRegion(
+      { latitude: Number(v.lat), longitude: Number(v.lng), ...FOCUS },
+      350,
+    );
+  }, []);
+
+  // §2 : HANDLER UNIQUE de sélection. Met à jour SIMULTANÉMENT popup + tracé (via
+  // l'effet clé sur `active?.id`) + centrage caméra, éliminant toute désync entre
+  // le véhicule cadré et celui affiché dans la carte.
+  const selectVehicle = useCallback(
+    (id: number, opts: { persist?: boolean } = {}) => {
+      const { persist = true } = opts;
+      setActiveId(id);
+      setShowCard(true);
+      frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
+      if (persist) void setLastConsulted(id); // §3 : mémorise le dernier consulté
+    },
+    [frameVehicle],
+  );
+
+  // Préférences de focus persistées (proxy « dernier ajouté » + dernier consulté).
+  useEffect(() => {
+    Promise.all([getLastEnrolled(), getLastConsulted()]).then(([enrolled, consulted]) =>
+      setPrefs({ enrolled, consulted }),
+    );
+  }, []);
+
+  // §3 : sélection initiale une seule fois, dès que prefs + flotte sont dispo.
+  useEffect(() => {
+    if (didInitRef.current || !prefs || vehicles.length === 0) return;
+    const target = pickInitial(vehicles, prefs.enrolled, prefs.consulted);
+    if (target == null) return;
+    didInitRef.current = true;
+    selectVehicle(target, { persist: false }); // ne pas écraser le dernier consulté
+  }, [prefs, vehicles, selectVehicle]);
+
+  // Premier cadrage caméra : attend que la carte soit prête (animateToRegion
+  // est un no-op avant `onMapReady`). Les sélections ultérieures cadrent direct.
+  useEffect(() => {
+    if (framedRef.current || !mapReady || !active) return;
+    framedRef.current = true;
+    frameVehicle(active);
+  }, [mapReady, active, frameVehicle]);
+
+  // §4 : deep-link depuis la liste. Le param prend le dessus sur la sélection
+  // initiale ; on l'efface après consommation pour que retaper le MÊME véhicule
+  // (valeur undefined → id) re-déclenche le focus.
+  useEffect(() => {
+    if (routeVehicleId == null) return;
+    didInitRef.current = true;
+    selectVehicle(routeVehicleId);
+    tabNav.setParams({ vehicleId: undefined });
+  }, [routeVehicleId, selectVehicle, tabNav]);
 
   // §3 : fenêtre glissante 2 h du véhicule suivi. En mémoire seule — purgée au
   // changement de véhicule, à l'arrêt du suivi, et à la sortie/déconnexion (unmount).
@@ -139,21 +219,6 @@ export function MapScreen() {
     };
   }, [active, addrCache]);
 
-  const recenter = (v: VehicleVM | null) => {
-    if (!v?.lat || !v?.lng) return;
-    mapRef.current?.animateToRegion(
-      { latitude: Number(v.lat), longitude: Number(v.lng), latitudeDelta: 0.02, longitudeDelta: 0.02 },
-      350,
-    );
-  };
-
-  const select = (v: VehicleVM) => {
-    setActiveId(v.id);
-    setShowCard(true);
-    recenter(v);
-    void AsyncStorage.setItem(LAST_VEHICLE_KEY, String(v.id)); // §1 : mémorise le dernier consulté
-  };
-
   // Street View réel de Google, centré sur la position du véhicule sélectionné.
   // Pas d'intégration Street View native fiable côté Expo/react-native-maps → on
   // ouvre le panorama via l'URL officielle Google Maps (app native ou navigateur).
@@ -173,6 +238,7 @@ export function MapScreen() {
         provider={PROVIDER_DEFAULT}
         style={{ flex: 1 }}
         initialRegion={DAKAR}
+        onMapReady={() => setMapReady(true)}
         mapType={mapType}
         showsMyLocationButton={false}
         showsUserLocation={focused && locGranted}
@@ -183,8 +249,10 @@ export function MapScreen() {
         clusterTextColor={LIME_ON}
       >
         {traceOn && trace.length > 1 ? <Polyline coordinates={trace} strokeColor={TRACK} strokeWidth={4} /> : null}
-        {/* §2 : chaque marqueur expose `coordinate` (le clustering le lit) ; véhicules
-            sans position exclus. La position exacte est préservée au dé-clustering. */}
+        {/* §1 : TOUS les véhicules ayant une position sont rendus en permanence —
+            jamais filtrés sur la sélection. `key` = id du device (stable entre ticks).
+            Chaque marqueur expose `coordinate` (lu par le clustering) ; la position
+            exacte est préservée au dé-clustering. §5 : un seul tap → selectVehicle. */}
         {vehicles
           .filter((v) => v.lat && v.lng)
           .map((v) => (
@@ -193,7 +261,7 @@ export function MapScreen() {
               v={v}
               coordinate={{ latitude: Number(v.lat), longitude: Number(v.lng) }}
               active={v.id === activeId}
-              onPress={() => select(v)}
+              onPress={() => selectVehicle(v.id)}
             />
           ))}
       </ClusteredMapView>
@@ -228,7 +296,7 @@ export function MapScreen() {
       {/* contrôles carte */}
       <View style={{ position: "absolute", right: 14, top: insets.top + 78, gap: 8 }}>
         <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
-        <GlassButton t={t} icon={Crosshair} size={38} color={t.accentMuted} onPress={() => recenter(active)} />
+        <GlassButton t={t} icon={Crosshair} size={38} color={t.accentMuted} onPress={() => frameVehicle(active)} />
         <GlassButton t={t} icon={PersonStanding} size={38} color={t.text} onPress={() => openStreetView(active)} />
       </View>
 

@@ -42,6 +42,9 @@ export function VehicleMarker({ v, active, onPress }: Props) {
       coordinate={{ latitude: lat, longitude: lng }}
       onPress={onPress}
       anchor={{ x: 0.5, y: 0.37 }}
+      // §5 : ni `title`/`description` ni enfant <Callout> → aucune bulle native
+      // n'est créée, donc rien n'intercepte le tap. Un seul tap sur l'icône OU le
+      // label déclenche `onPress` (selectVehicle) — pas de double-tap.
       tracksViewChanges={active}
     >
       <View style={{ alignItems: "center" }}>
