@@ -5,9 +5,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  *
  * - `lastConsulted` : dernier véhicule sélectionné (popup/tracé/caméra). Réécrit à
  *   chaque `selectVehicle`, sert de repli (b) au montage.
- * - `lastEnrolled`  : dernier device ajouté SUR CET APPAREIL. Sert de proxy local à
- *   la priorité (a) « dernier device ajouté » tant que l'API façade n'expose pas
- *   `createdAt` sur le view-model (cf. VehicleVM.createdAt, optionnel).
+ * - `lastEnrolled`  : dernier device ajouté SUR CET APPAREIL — signal ONE-SHOT de
+ *   la priorité (a) « device fraîchement enrôlé ». Consommé (effacé) au premier
+ *   cadrage : ensuite le device bascule en « dernier consulté » et n'écrase plus
+ *   la sélection aux ouvertures suivantes.
  */
 const LAST_CONSULTED_KEY = "map.lastVehicle";
 const LAST_ENROLLED_KEY = "map.lastEnrolled";
@@ -27,3 +28,5 @@ export const setLastConsulted = (id: number): Promise<void> =>
 export const getLastEnrolled = (): Promise<number | null> => readId(LAST_ENROLLED_KEY);
 export const setLastEnrolled = (id: number): Promise<void> =>
   AsyncStorage.setItem(LAST_ENROLLED_KEY, String(id));
+/** Consomme le signal one-shot (§a) après le premier cadrage sur le device enrôlé. */
+export const clearLastEnrolled = (): Promise<void> => AsyncStorage.removeItem(LAST_ENROLLED_KEY);

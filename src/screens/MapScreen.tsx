@@ -20,7 +20,7 @@ import { iconForVehicle } from "../icons/vehicleIcons";
 import { ActionBtn, GlassButton, KMonogram, Metric, StatusPill } from "../ui";
 import { VehicleMarker } from "./map/VehicleMarker";
 import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
-import { getLastConsulted, getLastEnrolled, setLastConsulted } from "../data/focusPrefs";
+import { clearLastEnrolled, getLastConsulted, getLastEnrolled, setLastConsulted } from "../data/focusPrefs";
 import type { RootStackParamList, TabParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
@@ -30,8 +30,8 @@ const STALE_MS = 6 * 60 * 60 * 1000; // §1 : donnée jugée obsolète au-delà 
 
 /**
  * §3 — sélection initiale au montage, ordre de priorité :
- *  (a) dernier device ajouté : `createdAt` desc si l'API l'expose, sinon proxy local
- *      `lastEnrolled` (dernier enrôlement sur CET appareil) ;
+ *  (a) device fraîchement enrôlé (`lastEnrolled`, signal ONE-SHOT propre à cet
+ *      appareil) → n'a priorité qu'à la 1re ouverture qui suit l'enrôlement ;
  *  (b) sinon dernier consulté persisté ;
  *  (c) sinon premier de la liste.
  * Cadrage = zoom direct sur ce véhicule (jamais fitToCoordinates sur la flotte).
@@ -43,10 +43,6 @@ function pickInitial(
 ): number | null {
   if (!vehicles.length) return null;
   const has = (id: number | null) => id != null && vehicles.some((v) => v.id === id);
-  const dated = vehicles.filter((v) => v.createdAt);
-  if (dated.length) {
-    return dated.reduce((a, b) => (String(a.createdAt) >= String(b.createdAt) ? a : b)).id;
-  }
   if (has(lastEnrolledId)) return lastEnrolledId;
   if (has(lastConsultedId)) return lastConsultedId;
   return vehicles[0].id;
@@ -139,7 +135,11 @@ export function MapScreen() {
     const target = pickInitial(vehicles, prefs.enrolled, prefs.consulted);
     if (target == null) return;
     didInitRef.current = true;
-    selectVehicle(target, { persist: false }); // ne pas écraser le dernier consulté
+    // (a) device fraîchement enrôlé : prioritaire UNE seule fois. On consomme le
+    // signal one-shot puis on persiste ce cadrage comme « dernier consulté » →
+    // aux ouvertures suivantes (aucun nouvel enrôlement) c'est lui qui revient (b).
+    if (prefs.enrolled != null && target === prefs.enrolled) void clearLastEnrolled();
+    selectVehicle(target); // persiste comme dernier consulté
   }, [prefs, vehicles, selectVehicle]);
 
   // Premier cadrage caméra : attend que la carte soit prête (animateToRegion

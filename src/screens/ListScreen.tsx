@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { AlertTriangle, Battery, Hash, KeyRound, Lock, Plus, Search, Trash2 } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -16,7 +16,7 @@ import { setLastEnrolled } from "../data/focusPrefs";
 import { toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { BottomSheet, ErrorState, Field, Glass, SkeletonRow, StatusDot } from "../ui";
-import type { RootStackParamList } from "../navigation/types";
+import type { TabParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
 export function ListScreen() {
@@ -24,7 +24,11 @@ export function ListScreen() {
   const { t: tr } = useTranslation();
   const { units } = usePrefs();
   const insets = useSafeAreaInsets();
-  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // ListScreen est un onglet frère de `map` dans le MÊME Tab.Navigator : on
+  // navigue directement vers l'onglet Carte (pas via le parent stack `Tabs`), ce
+  // qui évite le bubbling ambigu parent→enfant et bascule l'onglet de façon
+  // déterministe. Rester sur l'onglet frère = simple switch, aucun écran empilé.
+  const nav = useNavigation<BottomTabNavigationProp<TabParamList>>();
   const { vehicles, loading, error, refresh } = useVehicles();
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -174,7 +178,7 @@ export function ListScreen() {
                   // param). Les autres marqueurs restent affichés ; seul le focus change.
                   // Détail reste accessible depuis la carte (bouton « + »). Device grisé
                   // (revalidate) → ré-ajout au lieu de naviguer.
-                  onPress={() => (locked ? openAdd(v.imei) : nav.navigate("Tabs", { screen: "map", params: { vehicleId: v.id } }))}
+                  onPress={() => (locked ? openAdd(v.imei) : nav.navigate("map", { vehicleId: v.id }))}
                   onLongPress={() => openDelete(v)}
                   delayLongPress={500}
                 >

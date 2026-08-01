@@ -39,11 +39,4 @@ export interface VehicleVM {
    * les remettent à null.
    */
   telemetryAt?: string | null;
-  /**
-   * Date de création du device (enrôlement). OPTIONNEL : non exposé aujourd'hui par
-   * l'API façade `/vehicles`. Utilisé par la priorité (a) « dernier device ajouté »
-   * du focus carte dès que la façade le renverra ; à défaut un proxy local
-   * (`getLastEnrolled`) prend le relais.
-   */
-  createdAt?: string | null;
 }
