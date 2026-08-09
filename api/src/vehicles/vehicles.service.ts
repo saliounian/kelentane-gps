@@ -68,32 +68,38 @@ export class VehiclesService {
 
   /**
    * Enrôle un device NEUF (création cœur GPS) — chemin admin / auto-détection (§2).
-   * Le créateur devient premier accès (rôle 'action', mot de passe par défaut en base).
-   * Un device DÉJÀ existant s'ajoute via `addAccess` (mot de passe), pas ici.
+   *
+   * SÉCURITÉ (C2) : un device DÉJÀ connu — présent en base app OU déjà dans la flotte
+   * Traccar — n'est JAMAIS adopté sans mot de passe. Il est routé par le MÊME chemin
+   * que « Ajouter un dispositif » (`addAccess`) : vérification du mot de passe device,
+   * erreur générique unique (anti-énumération), rate-limit en base. Plus aucun cas
+   * particulier « adoption sans mot de passe ».
+   *
+   * Seul un IMEI RÉELLEMENT NEUF (inconnu de la base ET de Traccar) crée un device :
+   * le créateur en devient premier accès (rôle 'action'), et la colonne `device_password`
+   * reçoit son défaut hashé (123456) en base (NOT NULL) — jamais vide/null.
    */
-  async enroll(userId: string, imei: string, name?: string): Promise<VehicleVM> {
+  async enroll(userId: string, imei: string, name?: string, devicePassword?: string): Promise<VehicleVM> {
     if (!/^\d{10,17}$/.test(imei)) throw new BadRequestException("IMEI invalide");
-    if (await this.devices.existsByImei(imei)) {
-      throw new HttpException(
-        { message: "Ce dispositif existe déjà. Ajoute-le avec son mot de passe.", code: "exists" },
-        HttpStatus.CONFLICT,
-      );
-    }
 
+    const existsInApp = await this.devices.existsByImei(imei);
     const { devices } = await this.traccar.getFleet(); // injoignable → 502 (controller.wrap)
     const existing = devices.find((d) => d.uniqueId === imei);
-    const label = name?.trim() || existing?.name || `Boîtier ${imei.slice(-4)}`;
 
-    let traccarId: number;
-    if (existing) traccarId = existing.id;
-    else {
-      const dev = await this.traccar.createDevice(label, imei);
-      traccarId = dev.id;
+    // Device déjà connu (base app OU cœur GPS) → exige le mot de passe device,
+    // exactement comme addAccess. Un orphelin Traccar sans ligne base app renverra
+    // l'erreur générique (RPC device_add_access ne le trouve pas) → il doit être
+    // provisionné côté admin (bulk-enroll) avant d'être ajouté par un client.
+    if (existsInApp || existing) {
+      return this.addAccess(userId, imei, devicePassword ?? "");
     }
 
-    const row = await this.devices.insertOwned(userId, imei, traccarId, { name: label });
+    // IMEI réellement neuf → création cœur GPS + premier accès.
+    const label = name?.trim() || `Boîtier ${imei.slice(-4)}`;
+    const dev = await this.traccar.createDevice(label, imei);
+    const row = await this.devices.insertOwned(userId, imei, dev.id, { name: label });
     if (row) await this.devices.insertAccess(row.id, userId, "action");
-    const base: TraccarDevice = existing ?? { id: traccarId, name: label, uniqueId: imei, status: "offline", lastUpdate: null };
+    const base: TraccarDevice = { id: dev.id, name: label, uniqueId: imei, status: "offline", lastUpdate: null };
     return { ...mergeRow(toVM(base, undefined, new Date()), row ?? undefined), accessRole: "action", accessStatus: "active" };
   }
 

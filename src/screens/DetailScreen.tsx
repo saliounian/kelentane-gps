@@ -251,6 +251,20 @@ export function DetailScreen() {
           ) : null}
         </View>
 
+        {/* C3 : rappel LÉGER non-bloquant → personnaliser le mot de passe device par
+            défaut (« 123456 »). Simple invite ; ouvre le même flux que le bouton dédié.
+            Réservé au rôle 'action' (seul habilité à changer le mot de passe device). */}
+        {canAct ? (
+          <Pressable
+            onPress={() => { setNewDevPwd(""); setDevPwdMsg(null); setDevPwdOpen(true); }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: hexA(ACCENT, 0.1) }}
+          >
+            <KeyRound size={16} color={ACCENT} />
+            <Text style={{ flex: 1, fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("detail.devicePwdHint")}</Text>
+            <Text style={{ fontSize: 12.5, color: ACCENT, fontFamily: font.body.bold }}>{tr("detail.devicePwdHintCta")}</Text>
+          </Pressable>
+        ) : null}
+
         {/* détails dispositif */}
         <Label t={t}>{tr("detail.deviceDetails")}</Label>
         <Glass t={t} dark={dark} style={{ padding: 4 }}>

@@ -160,6 +160,8 @@
     "devicePwdOk": "Device password updated.",
     "devicePwdSave": "Save",
     "devicePwdSaving": "Saving…",
+    "devicePwdHint": "Your tracker may still use the default password. Personalize it to keep it better protected.",
+    "devicePwdHintCta": "Personalize",
     "telemetryAge": "Telemetry"
   },
   "pwd": {

@@ -160,6 +160,8 @@
     "devicePwdOk": "Mot de passe du dispositif mis à jour.",
     "devicePwdSave": "Enregistrer",
     "devicePwdSaving": "Enregistrement…",
+    "devicePwdHint": "Ton boîtier utilise peut-être encore le mot de passe par défaut. Personnalise-le pour mieux le protéger.",
+    "devicePwdHintCta": "Personnaliser",
     "telemetryAge": "Télémétrie"
   },
   "pwd": {

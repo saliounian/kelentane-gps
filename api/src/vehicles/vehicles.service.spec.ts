@@ -18,21 +18,23 @@ const statusOf = async (p: Promise<unknown>): Promise<number> => {
   }
 };
 
-describe("VehiclesService.enroll (device NEUF — plus de transfert)", () => {
+describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe requis, C2)", () => {
   let traccar: { getFleet: jest.Mock; createDevice: jest.Mock };
   let devices: {
     existsByImei: jest.Mock;
     insertOwned: jest.Mock;
     insertAccess: jest.Mock;
+    addAccess: jest.Mock;
   };
   let service: VehiclesService;
 
   beforeEach(() => {
-    traccar = { getFleet: jest.fn(), createDevice: jest.fn() };
+    traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [], positions: [] }), createDevice: jest.fn() };
     devices = {
-      existsByImei: jest.fn(),
+      existsByImei: jest.fn().mockResolvedValue(false),
       insertOwned: jest.fn().mockResolvedValue(null),
       insertAccess: jest.fn(),
+      addAccess: jest.fn(),
     };
     service = new VehiclesService(traccar as never, devices as never, {} as AccessService);
   });
@@ -41,42 +43,60 @@ describe("VehiclesService.enroll (device NEUF — plus de transfert)", () => {
     expect(await statusOf(service.enroll("u1", "abc"))).toBe(400);
   });
 
-  it("IMEI déjà existant → 409 code 'exists' (aucun transfert)", async () => {
+  it("device déjà en base app → délègue à addAccess (mot de passe requis)", async () => {
     devices.existsByImei.mockResolvedValue(true);
-    try {
-      await service.enroll("u1", IMEI);
-      fail("attendu 409");
-    } catch (e) {
-      const ex = e as HttpException;
-      expect(ex.getStatus()).toBe(409);
-      expect(ex.getResponse()).toMatchObject({ code: "exists" });
-    }
+    devices.addAccess.mockResolvedValue("ok");
+    jest.spyOn(service, "list").mockResolvedValue([{ imei: IMEI, id: 7 } as never]);
+    const vm = await service.enroll("u1", IMEI, undefined, "monsecret");
+    expect(devices.addAccess).toHaveBeenCalledWith(IMEI, "monsecret", "u1");
+    expect(traccar.createDevice).not.toHaveBeenCalled();
+    expect(vm.imei).toBe(IMEI);
+  });
+
+  it("device déjà en base app SANS mot de passe → 403 générique (aucune adoption)", async () => {
+    devices.existsByImei.mockResolvedValue(true);
+    expect(await statusOf(service.enroll("u1", IMEI))).toBe(403);
+    expect(devices.addAccess).not.toHaveBeenCalled(); // mot de passe vide → rejeté avant la base
+    expect(traccar.createDevice).not.toHaveBeenCalled();
+    expect(devices.insertOwned).not.toHaveBeenCalled();
+  });
+
+  it("device présent sur Traccar mais absent en base → PLUS d'adoption libre (C2 fermé)", async () => {
+    devices.existsByImei.mockResolvedValue(false);
+    traccar.getFleet.mockResolvedValue({ devices: [tDevice(42, IMEI)], positions: [] });
+    // Sans mot de passe → 403 générique, aucune création d'accès/owner.
+    expect(await statusOf(service.enroll("u1", IMEI))).toBe(403);
+    expect(devices.insertOwned).not.toHaveBeenCalled();
+    expect(devices.insertAccess).not.toHaveBeenCalled();
     expect(traccar.createDevice).not.toHaveBeenCalled();
   });
 
-  it("device absent en base mais présent sur Traccar → ADOPTION + premier accès", async () => {
+  it("device présent sur Traccar → avec mot de passe, passe par addAccess", async () => {
     devices.existsByImei.mockResolvedValue(false);
     traccar.getFleet.mockResolvedValue({ devices: [tDevice(42, IMEI)], positions: [] });
-    devices.insertOwned.mockResolvedValue({ id: "row-1" });
-    const vm = await service.enroll("u1", IMEI);
+    devices.addAccess.mockResolvedValue("ok");
+    jest.spyOn(service, "list").mockResolvedValue([{ imei: IMEI, id: 42 } as never]);
+    const vm = await service.enroll("u1", IMEI, undefined, "monsecret");
+    expect(devices.addAccess).toHaveBeenCalledWith(IMEI, "monsecret", "u1");
     expect(traccar.createDevice).not.toHaveBeenCalled();
-    expect(devices.insertOwned).toHaveBeenCalledWith("u1", IMEI, 42, expect.any(Object));
-    expect(devices.insertAccess).toHaveBeenCalledWith("row-1", "u1", "action");
     expect(vm.id).toBe(42);
+  });
+
+  it("device absent partout → création Traccar (premier accès, mdp défaut en base)", async () => {
+    devices.existsByImei.mockResolvedValue(false);
+    traccar.getFleet.mockResolvedValue({ devices: [], positions: [] });
+    traccar.createDevice.mockResolvedValue({ id: 99, uniqueId: IMEI });
+    devices.insertOwned.mockResolvedValue({ id: "row-1" });
+    const vm = await service.enroll("u1", IMEI, "Ma voiture");
+    expect(traccar.createDevice).toHaveBeenCalled();
+    expect(devices.insertOwned).toHaveBeenCalledWith("u1", IMEI, 99, expect.any(Object));
+    expect(devices.insertAccess).toHaveBeenCalledWith("row-1", "u1", "action");
+    expect(vm.id).toBe(99);
     expect(vm.accessRole).toBe("action");
     expect(vm.accessStatus).toBe("active");
   });
 
-  it("device absent partout → création Traccar", async () => {
-    devices.existsByImei.mockResolvedValue(false);
-    traccar.getFleet.mockResolvedValue({ devices: [], positions: [] });
-    traccar.createDevice.mockResolvedValue({ id: 99, uniqueId: IMEI });
-    const vm = await service.enroll("u1", IMEI, "Ma voiture");
-    expect(traccar.createDevice).toHaveBeenCalled();
-    expect(vm.id).toBe(99);
-  });
-
-  it("Traccar injoignable → l'erreur remonte (PAS un faux 409)", async () => {
+  it("Traccar injoignable → l'erreur remonte (PAS un faux succès)", async () => {
     devices.existsByImei.mockResolvedValue(false);
     traccar.getFleet.mockRejectedValue(new Error("EAI_AGAIN traccar"));
     await expect(service.enroll("u1", IMEI)).rejects.toThrow("EAI_AGAIN");

@@ -19,6 +19,8 @@ interface PatchBody {
 interface EnrollBody {
   imei?: string;
   name?: string;
+  /** Mot de passe device — requis si l'IMEI est déjà connu (base app ou Traccar). */
+  devicePassword?: string;
 }
 
 interface AccessBody {
@@ -77,14 +79,15 @@ export class VehiclesController {
 
   /**
    * POST /vehicles → enrôle un device NEUF (création cœur GPS) — admin / auto-détection.
-   * Un device existant s'ajoute via POST /vehicles/access.
+   * Un device DÉJÀ connu (base app ou Traccar) exige le mot de passe device et suit le
+   * même chemin anti-énumération que POST /vehicles/access (C2).
    */
   @Post()
   async enroll(@Body() body: EnrollBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);
     const imei = body.imei.replace(/\s/g, "");
     try {
-      const vm = await this.vehicles.enroll(user.id, imei, body.name);
+      const vm = await this.vehicles.enroll(user.id, imei, body.name, body.devicePassword);
       // §2 : compte walk-up IMEI + accès. Non bloquant, mais erreur tracée (plus de silence).
       this.provisionWalkUp(imei);
       return vm;
