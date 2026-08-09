@@ -259,7 +259,8 @@
     "needPoints": "{{n}} more point(s) to validate the zone",
     "polyReady": "{{n}} vertices · valid zone",
     "circleReady": "Center placed · adjust the radius",
-    "placed": "{{n}} placed"
+    "placed": "{{n}} placed",
+    "readOnly": "View-only access — changes unavailable"
   },
   "auth": {
     "tagline": "GPS & fleet telematics",
@@ -321,6 +322,7 @@
     "pwdRule": "Password must be ≥ 4 chars and match.",
     "update": "Update",
     "shareDesc": "Pick a vehicle to generate a share token (read-only).",
+    "shareNone": "No vehicle to share (view-only access).",
     "copy": "Copy",
     "copied": "Copied",
     "addShared": "Add a shared device",

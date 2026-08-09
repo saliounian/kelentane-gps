@@ -4,7 +4,7 @@ import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type R
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, Fence, Plus, RotateCcw, X } from "lucide-react-native";
+import { Check, ChevronLeft, Eye, Fence, Plus, RotateCcw, X } from "lucide-react-native";
 import { ACCENT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
@@ -27,6 +27,10 @@ export function GeofenceScreen() {
   const { params } = useRoute<RouteProp<RootStackParamList, "Geo">>();
   const { vehicles } = useVehicles();
   const v = vehicles.find((x) => x.id === params.vehicleId);
+  // H1 : écriture géofence = rôle 'action'. En consultation (ou accès à revalider),
+  // les contrôles create/toggle/delete sont masqués (le serveur refuse déjà — 403 —
+  // mais on n'expose pas de bouton actif qui échoue).
+  const canAct = v?.accessRole === "action" && v?.accessStatus !== "revalidate";
 
   const [view, setView] = useState<"list" | "edit">("list");
   const [zones, setZones] = useState<GeofenceVM[]>([]);
@@ -270,16 +274,25 @@ export function GeofenceScreen() {
         <View style={{ position: "absolute", top: insets.top + 8, left: 14 }}>
           <GlassButton t={t} icon={ChevronLeft} size={38} onPress={() => nav.goBack()} />
         </View>
-        <View style={{ position: "absolute", top: insets.top + 8, right: 14 }}>
-          <Pressable onPress={() => { reset(); setView("edit"); }} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" }}>
-            <Plus size={22} color={LIME_ON} />
-          </Pressable>
-        </View>
+        {canAct ? (
+          <View style={{ position: "absolute", top: insets.top + 8, right: 14 }}>
+            <Pressable onPress={() => { reset(); setView("edit"); }} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" }}>
+              <Plus size={22} color={LIME_ON} />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 14, gap: 10 }}>
         <Text style={{ fontSize: 20, color: t.text, fontFamily: font.display.extrabold }}>{tr("geo.title")}</Text>
         <Text style={{ fontSize: 12, color: t.sub, marginTop: -6, fontFamily: font.body.regular }}>{tr("geo.subtitle", { name: v?.name ?? "Véhicule" })}</Text>
+
+        {!canAct ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Eye size={13} color={t.sub} />
+            <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("geo.readOnly")}</Text>
+          </View>
+        ) : null}
 
         {error ? (
           <ErrorState t={t} message={error} onRetry={load} />
@@ -300,10 +313,16 @@ export function GeofenceScreen() {
                     <Text style={{ fontSize: 14, color: t.text, fontFamily: font.body.semibold }}>{z.name}</Text>
                     <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>{z.kind === "circle" ? tr("geo.circle") : tr("geo.polygon")}</Text>
                   </View>
-                  <Toggle t={t} on={z.enabled} set={(on) => toggle(z, on)} />
-                  <Pressable onPress={() => remove(z)} style={{ width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-                    <X size={15} color={t.sub} />
-                  </Pressable>
+                  {canAct ? (
+                    <>
+                      <Toggle t={t} on={z.enabled} set={(on) => toggle(z, on)} />
+                      <Pressable onPress={() => remove(z)} style={{ width: 30, height: 30, borderRadius: 9, alignItems: "center", justifyContent: "center", backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+                        <X size={15} color={t.sub} />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.semibold }}>{z.enabled ? tr("common.on") : tr("common.off")}</Text>
+                  )}
                 </View>
               );
             })}

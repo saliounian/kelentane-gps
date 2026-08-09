@@ -226,6 +226,7 @@ function LanguagePickerSheet({ t, visible, current, onSelect, onClose }: { t: Th
 function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClose: () => void }) {
   const { t: tr } = useTranslation();
   const { vehicles } = useVehicles();
+  const shareable = vehicles.filter((v) => v.accessRole === "action" && v.accessStatus !== "revalidate");
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [claim, setClaim] = useState("");
@@ -265,12 +266,18 @@ function ShareSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClo
       <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 12, fontFamily: font.body.regular }}>
         {tr("profile.shareDesc")}
       </Text>
+      {/* H1 : émettre un partage = rôle 'action' (donne accès à un tiers). Seuls les
+          véhicules où le compte a l'accès 'action' (et non à revalider) sont partageables. */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        {vehicles.map((v) => (
-          <Pressable key={v.id} onPress={() => gen(v.id)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
-            <Text style={{ fontSize: 13, color: t.text, fontFamily: font.body.semibold }}>{v.name}</Text>
-          </Pressable>
-        ))}
+        {shareable.length === 0 ? (
+          <Text style={{ fontSize: 12.5, color: t.sub, fontFamily: font.body.regular }}>{tr("profile.shareNone")}</Text>
+        ) : (
+          shareable.map((v) => (
+            <Pressable key={v.id} onPress={() => gen(v.id)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: t.glass, borderWidth: 1, borderColor: t.border }}>
+              <Text style={{ fontSize: 13, color: t.text, fontFamily: font.body.semibold }}>{v.name}</Text>
+            </Pressable>
+          ))
+        )}
       </View>
 
       {token ? (
