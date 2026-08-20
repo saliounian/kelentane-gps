@@ -92,6 +92,12 @@ export function MapScreen() {
   vehiclesRef.current = vehicles;
   const didInitRef = useRef(false); // sélection initiale (§3) faite une seule fois
   const framedRef = useRef(false); // 1er cadrage caméra (attend carte prête)
+  // §2 : cadrage demandé alors que la carte n'était pas encore prête (nav à froid
+  // Liste→Carte). animateToRegion est un no-op avant onMapReady → on mémorise l'id
+  // et on rejoue le cadrage dès que la carte est prête ET l'écran au premier plan.
+  const pendingFrameRef = useRef<number | null>(null);
+  const mapReadyRef = useRef(false);
+  mapReadyRef.current = mapReady;
 
   const active = useMemo<VehicleVM | null>(
     () => vehicles.find((v) => v.id === activeId) ?? null,
@@ -116,11 +122,23 @@ export function MapScreen() {
       const { persist = true } = opts;
       setActiveId(id);
       setShowCard(true);
-      frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
+      // §2 : si la carte n'est pas prête (nav à froid depuis la Liste), on diffère le
+      // cadrage plutôt que de le perdre (animateToRegion serait un no-op).
+      if (mapReadyRef.current) frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
+      else pendingFrameRef.current = id;
       if (persist) void setLastConsulted(id); // §3 : mémorise le dernier consulté
     },
     [frameVehicle],
   );
+
+  // §2 : rejoue le cadrage différé dès que la carte est prête et l'écran focus.
+  useEffect(() => {
+    if (!mapReady || !focused) return;
+    const id = pendingFrameRef.current;
+    if (id == null) return;
+    pendingFrameRef.current = null;
+    frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
+  }, [mapReady, focused, frameVehicle]);
 
   // Préférences de focus persistées (proxy « dernier ajouté » + dernier consulté).
   useEffect(() => {

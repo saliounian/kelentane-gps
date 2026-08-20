@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Text, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { LIME } from "../../theme/tokens";
@@ -19,6 +19,11 @@ export function VehicleMarker({ v, active, onPress }: Props) {
   const lat = v.lat ? Number(v.lat) : null;
   const lng = v.lng ? Number(v.lng) : null;
   const pulse = useRef(new Animated.Value(0)).current;
+  // §1 : le marqueur natif fige (snapshot) sa vue quand `tracksViewChanges` passe à
+  // false. Si l'icône PNG n'est pas encore décodée à cet instant, il capture une vue
+  // VIDE et ne se rafraîchit jamais → icônes lentes/absentes à l'ouverture. On garde
+  // le tracking actif tant que l'icône n'a pas signalé `onLoad`, puis on fige.
+  const [iconReady, setIconReady] = useState(false);
 
   useEffect(() => {
     if (!active) return;
@@ -45,7 +50,7 @@ export function VehicleMarker({ v, active, onPress }: Props) {
       // §5 : ni `title`/`description` ni enfant <Callout> → aucune bulle native
       // n'est créée, donc rien n'intercepte le tap. Un seul tap sur l'icône OU le
       // label déclenche `onPress` (selectVehicle) — pas de double-tap.
-      tracksViewChanges={active}
+      tracksViewChanges={active || !iconReady}
     >
       <View style={{ alignItems: "center" }}>
         <View style={{ width: 56, height: 56, alignItems: "center", justifyContent: "center" }}>
@@ -63,7 +68,7 @@ export function VehicleMarker({ v, active, onPress }: Props) {
               }}
             />
           ) : null}
-          <VehicleGlyph v={v} size={size} />
+          <VehicleGlyph v={v} size={size} onIconLoad={() => setIconReady(true)} />
         </View>
         {/* Pastille nom — lisible sur carte claire ET satellite (fond translucide clair). */}
         <View

@@ -77,10 +77,11 @@ function haversine(a: RoutePoint, b: RoutePoint): number {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// §3 : vitesses de lecture recalibrées (~3-4× plus lentes que l'origine 0.4/0.9/1.8).
-// Nouveau « Vite » = ancien « Lent ». Tout se règle ici après test visuel terrain :
+// §4 : vitesses encore /4 après un nouveau retour terrain (lot précédent : 0.1/0.2/0.4).
+// Origine historique 0.4/0.9/1.8 → déjà ~3-4× plus lent → maintenant encore ÷4.
+// Les 3 paliers restent distincts (ratio 1:2:4). Tout se règle ici après test visuel :
 // avancement par tick = PROGRESS_STEP × SPEEDS[mode], un tick toutes les TICK_MS.
-const SPEEDS = { Lent: 0.1, Moyen: 0.2, Vite: 0.4 } as const;
+const SPEEDS = { Lent: 0.025, Moyen: 0.05, Vite: 0.1 } as const;
 const PROGRESS_STEP = 0.006; // fraction du trajet par tick, avant multiplicateur
 const TICK_MS = 40;
 type SpeedMode = keyof typeof SPEEDS;
@@ -207,6 +208,15 @@ export function TrajectoryScreen() {
   const idx = pts.length ? Math.min(pts.length - 1, Math.round(progress * (pts.length - 1))) : 0;
   const cur = pts[idx];
   const coords = pts.map((p) => ({ latitude: p.lat, longitude: p.lng }));
+
+  // §3 : suivi caméra AUTO pendant la lecture — recentre sur le point courant à
+  // chaque nouveau point, sans pan manuel. `animateCamera` conserve le zoom courant
+  // (contrairement à `animateToRegion` qui le réinitialise). Actif en lecture seule ;
+  // à l'arrêt/scrub l'utilisateur reprend la main sur la caméra.
+  useEffect(() => {
+    if (!playing || !cur) return;
+    mapRef.current?.animateCamera({ center: { latitude: cur.lat, longitude: cur.lng } }, { duration: TICK_MS });
+  }, [playing, cur?.lat, cur?.lng]);
 
   // §1 : nom de lieu du point en cours. Adresse Traccar prioritaire (`cur.addr`,
   // même source que le popup carte). Sinon repli géocodage inverse du SEUL point

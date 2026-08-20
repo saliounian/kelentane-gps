@@ -2,14 +2,15 @@ import { View } from "react-native";
 import { iconForVehicle } from "../../icons/vehicleIcons";
 import type { VehicleVM } from "../../types/vehicle";
 
-type Props = { v: Pick<VehicleVM, "iconKey" | "type" | "color">; size?: number };
+type Props = { v: Pick<VehicleVM, "iconKey" | "type" | "color">; size?: number; onIconLoad?: () => void };
 
 /**
  * Pastille couleur (statut/identité) + icône véhicule blanche + anneau blanc.
  * Cœur visuel PARTAGÉ entre le marqueur carte (VehicleMarker) et la Trajectoire,
  * pour cohérence de l'icône véhicule partout (évite la duplication).
+ * `onIconLoad` : relayé par le marqueur pour synchroniser son snapshot natif (§1).
  */
-export function VehicleGlyph({ v, size = 32 }: Props) {
+export function VehicleGlyph({ v, size = 32, onIconLoad }: Props) {
   const Icon = iconForVehicle(v);
   return (
     <View
@@ -28,7 +29,7 @@ export function VehicleGlyph({ v, size = 32 }: Props) {
         shadowOffset: { width: 0, height: 4 },
       }}
     >
-      <Icon size={Math.round(size * 0.5)} color="#fff" />
+      <Icon size={Math.round(size * 0.5)} color="#fff" onLoad={onIconLoad} />
     </View>
   );
 }

@@ -4,8 +4,10 @@ import { VEHICLE_ASSETS } from "./vehicleAssets";
 import type { VehicleVM } from "../types/vehicle";
 
 /** Composant d'icône véhicule (art PNG coloré). `color` ignoré : l'art a sa
- *  propre palette (le statut se lit via l'anneau/la pastille, jamais l'icône). */
-export type VehicleIconComponent = (props: { size?: number; color?: string }) => ReactElement;
+ *  propre palette (le statut se lit via l'anneau/la pastille, jamais l'icône).
+ *  `onLoad` : remonté par l'Image une fois le PNG décodé — permet au marqueur natif
+ *  de retarder son snapshot jusqu'à ce que l'icône soit prête (sinon rendu vide). */
+export type VehicleIconComponent = (props: { size?: number; color?: string; onLoad?: () => void }) => ReactElement;
 
 const cache = new Map<string, VehicleIconComponent>();
 
@@ -13,8 +15,8 @@ function iconFor(key: string): VehicleIconComponent {
   const cached = cache.get(key);
   if (cached) return cached;
   const source = VEHICLE_ASSETS[key];
-  const Comp: VehicleIconComponent = ({ size = 24 }) => (
-    <Image source={source} style={{ width: size, height: size }} resizeMode="contain" />
+  const Comp: VehicleIconComponent = ({ size = 24, onLoad }) => (
+    <Image source={source} style={{ width: size, height: size }} resizeMode="contain" onLoad={onLoad} />
   );
   cache.set(key, Comp);
   return Comp;
