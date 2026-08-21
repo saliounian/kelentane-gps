@@ -14,7 +14,7 @@ import { logError, toUserMessage } from "../data/errorMessages";
 import { DateRangeSheet, ErrorState, Glass, GlassButton, Metric, Skeleton } from "../ui";
 import { useVehicles } from "../data/useVehicles";
 import { useIconOverrides } from "../state/iconOverrides";
-import { VehicleGlyph } from "./map/VehicleGlyph";
+import { PIN_TIP_Y, VehicleGlyph } from "./map/VehicleGlyph";
 import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { RoutePoint, StopPoint } from "../types/reports";
@@ -263,8 +263,8 @@ export function TrajectoryScreen() {
       <MapView ref={mapRef} provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
         {coords.length > 1 ? <Polyline coordinates={coords} strokeColor={TRACK} strokeWidth={4} /> : null}
         {cur ? (
-          <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: 0.5 }}>
-            {/* Vraie icône du véhicule (cohérence app) ; fallback point si pas encore chargée. */}
+          <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: glyphV ? PIN_TIP_Y : 0.5 }}>
+            {/* Pin véhicule (pointe = position exacte) ; fallback point si icône pas prête. */}
             {glyphV ? (
               <VehicleGlyph v={glyphV} size={34} />
             ) : (
