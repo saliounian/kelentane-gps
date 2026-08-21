@@ -4,46 +4,51 @@
     "slug": "kelentane-gps",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.kelentane.gps",
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
-      }
+      "bundleIdentifier": "com.kelentane.gps"
     },
     "android": {
       "package": "com.kelentane.gps",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0A5C42",
+        "foregroundImage": "./assets/brand/adaptive-foreground.png",
+        "monochromeImage": "./assets/brand/adaptive-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/brand/favicon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-notifications",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#F4F6F4",
+          "dark": { "backgroundColor": "#101513" }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/brand/notification-icon.png",
+          "color": "#0A5C42"
+        }
+      ],
       "expo-localization",
       "expo-secure-store",
       [
         "expo-location",
         {
           "locationWhenInUsePermission": "Kelentane affiche votre position sur la carte pour vous situer par rapport à vos véhicules. Utilisée uniquement quand l'écran carte est ouvert — jamais en arrière-plan."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": { "usesCleartextTraffic": true }
         }
       ]
     ],

@@ -1,6 +1,7 @@
-import { useEffect, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { Asset } from "expo-asset";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "./src/i18n";
@@ -15,9 +16,11 @@ import { AuthProvider, useAuth } from "./src/state/auth";
 import { PrefsProvider } from "./src/state/prefs";
 import { IconOverridesProvider } from "./src/state/iconOverrides";
 import { RootNavigator } from "./src/navigation/RootNavigator";
-import { AuthScreen, SessionSplash } from "./src/screens/AuthScreen";
+import { AuthScreen } from "./src/screens/AuthScreen";
+import { BrandLoadingScreen } from "./src/screens/BrandLoadingScreen";
 import { RemindersGate } from "./src/screens/RemindersGate";
 import { registerForPush } from "./src/data/push";
+import { VEHICLE_ASSETS } from "./src/icons/vehicleAssets";
 
 /**
  * Gate racine (handoff §12) : authStatus checking|out|in.
@@ -26,6 +29,14 @@ import { registerForPush } from "./src/data/push";
 function Root() {
   const { dark } = useTheme();
   const { status } = useAuth();
+  // §5 : durée minimale de l'écran de chargement de marque pour que l'animation
+  // (fondu + pulsation + barre dégradée) soit réellement perçue, même si la
+  // restauration de session est instantanée. Prend le relais du splash natif.
+  const [minElapsed, setMinElapsed] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setMinElapsed(true), 1400);
+    return () => clearTimeout(id);
+  }, []);
 
   useEffect(() => {
     if (status === "in") void registerForPush();
@@ -34,8 +45,8 @@ function Root() {
   return (
     <>
       <StatusBar style={dark ? "light" : "dark"} />
-      {status === "checking" ? (
-        <SessionSplash />
+      {status === "checking" || !minElapsed ? (
+        <BrandLoadingScreen />
       ) : status === "out" ? (
         <AuthScreen />
       ) : (
@@ -52,6 +63,13 @@ function Root() {
 
 export default function App() {
   const [fontsLoaded] = useAppFonts();
+
+  // §1 : préchauffage disque/mémoire des PNG véhicules dès le démarrage → décodage
+  // fait une fois, marqueurs quasi-instantanés à l'ouverture de la carte (en plus
+  // du correctif tracksViewChanges). Fire-and-forget, ne bloque pas le rendu.
+  useEffect(() => {
+    void Asset.loadAsync(Object.values(VEHICLE_ASSETS));
+  }, []);
 
   if (!fontsLoaded) {
     return <View style={{ flex: 1, backgroundColor: "#F4F6F4" }} />;

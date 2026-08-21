@@ -11,18 +11,6 @@ import { addIdentifierToHistory, getIdentifierHistory, rememberedIdentifier, rem
 import { toUserMessage } from "../data/errorMessages";
 import { BottomSheet, Field, KMonogram, Toggle } from "../ui";
 
-/** Écran de vérification de session (authStatus === "checking"). */
-export function SessionSplash() {
-  const { t } = useTheme();
-  const { t: tr } = useTranslation();
-  return (
-    <View style={{ flex: 1, backgroundColor: t.bg, alignItems: "center", justifyContent: "center", gap: 14 }}>
-      <KMonogram />
-      <Text style={{ fontSize: 12, color: t.sub, fontFamily: font.body.regular }}>{tr("auth.sessionCheck")}</Text>
-    </View>
-  );
-}
-
 /** Gate racine quand authStatus === "out" : connexion + auto-inscription. */
 export function AuthScreen() {
   const { t, dark, toggle } = useTheme();

@@ -8,6 +8,7 @@ export { Cmd } from "./Cmd";
 export { ActionBtn } from "./ActionBtn";
 export { Toggle } from "./Toggle";
 export { KMonogram } from "./KMonogram";
+export { BrandGlyph, BrandLockupH, BrandLockupV, PIN_DEEP, BRAND_LIME } from "./BrandLogo";
 export { SectionLabel, SectionLabelInline } from "./SectionLabel";
 export { GlassButton } from "./GlassButton";
 export { TabBar } from "./TabBar";
