@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { InteractionManager, Linking, Text, View } from "react-native";
+import { Image, InteractionManager, Linking, Text, View } from "react-native";
 import MapView, { Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import ClusteredMapView from "react-native-map-clustering";
 import * as Location from "expo-location";
@@ -23,6 +23,13 @@ import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import { clearLastEnrolled, getLastConsulted, getLastEnrolled, setLastConsulted } from "../data/focusPrefs";
 import type { RootStackParamList, TabParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
+
+// Wordmark de marque « KELENTANE GPS » (fichiers client), bascule selon le thème :
+// clair = texte noir, sombre = texte blanc. Remplace l'ancien nom texte dynamique.
+const WORDMARK = {
+  light: require("../../assets/brand/wordmark-light.png"),
+  dark: require("../../assets/brand/wordmark-dark.png"),
+};
 
 const DAKAR: Region = { latitude: 14.6928, longitude: -17.4467, latitudeDelta: 0.09, longitudeDelta: 0.09 };
 const FOCUS: Pick<Region, "latitudeDelta" | "longitudeDelta"> = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
@@ -293,8 +300,13 @@ export function MapScreen() {
       >
         <KMonogram />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, color: t.text, fontFamily: font.display.extrabold }}>kelentane</Text>
-          <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular }}>
+          {/* Wordmark image (bascule thème) à la place du nom texte ; sous-titre reste dynamique. */}
+          <Image
+            source={dark ? WORDMARK.dark : WORDMARK.light}
+            resizeMode="contain"
+            style={{ width: "100%", height: 18, alignSelf: "flex-start" }}
+          />
+          <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular, marginTop: 2 }}>
             {tr("map.summary", { count: vehicles.length, active: activeCount })}
           </Text>
         </View>

@@ -25,6 +25,35 @@ async function silhouette(src, size, pad) {
     .png();
 }
 
+// Recadrage SERRÉ par PROFILS de densité alpha (somme par ligne/colonne). Robuste au
+// glow doux et aux pixels épars que .trim()/bbox-alpha n'éliminaient pas : on garde la
+// bande dense du texte (lignes/colonnes > fraction du max). Renvoie l'aspect (w/h).
+async function tightCrop(src, out, width, rowFrac = 0.01, colFrac = 0.05) {
+  const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: W, height: H, channels: C } = info;
+  const A = C - 1;
+  const rows = new Array(H).fill(0);
+  const cols = new Array(W).fill(0);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const a = data[(y * W + x) * C + A];
+      rows[y] += a;
+      cols[x] += a;
+    }
+  }
+  const rt = Math.max(...rows) * rowFrac;
+  const ct = Math.max(...cols) * colFrac;
+  let minY = 0, maxY = H - 1, minX = 0, maxX = W - 1;
+  while (minY < H && rows[minY] < rt) minY++;
+  while (maxY > 0 && rows[maxY] < rt) maxY--;
+  while (minX < W && cols[minX] < ct) minX++;
+  while (maxX > 0 && cols[maxX] < ct) maxX--;
+  const cw = maxX - minX + 1;
+  const ch = maxY - minY + 1;
+  await sharp(src).extract({ left: minX, top: minY, width: cw, height: ch }).resize({ width, withoutEnlargement: true }).png().toFile(out);
+  return cw / ch;
+}
+
 async function main() {
   await sharp(SQUARE).resize(1024, 1024, { fit: "cover" }).png().toFile(B + "icon.png");
   await sharp(SQUARE).resize(1024, 1024, { fit: "cover" }).png().toFile(B + "splash-icon.png");
@@ -50,6 +79,11 @@ async function main() {
     .resize({ width: 768, withoutEnlargement: true })
     .png()
     .toFile(B + "lockup-vertical.png");
+
+  // Wordmarks « KELENTANE GPS » pour l'en-tête (bascule thème), recadrés serré.
+  const wmA = await tightCrop(B + "Wordmark Kelentane.png", B + "wordmark-light.png", 700);
+  const wmB = await tightCrop(B + "Kelentane Wordmark FOND SOMBRE.png", B + "wordmark-dark.png", 700);
+  console.log("wordmark aspect (w/h):", wmA.toFixed(2), wmB.toFixed(2));
 
   console.log("store assets derived from client sources");
 }
