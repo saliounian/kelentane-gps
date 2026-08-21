@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Linking, Text, View } from "react-native";
+import { InteractionManager, Linking, Text, View } from "react-native";
 import MapView, { Polyline, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import ClusteredMapView from "react-native-map-clustering";
 import * as Location from "expo-location";
@@ -91,13 +91,12 @@ export function MapScreen() {
   const vehiclesRef = useRef<VehicleVM[]>(vehicles);
   vehiclesRef.current = vehicles;
   const didInitRef = useRef(false); // sélection initiale (§3) faite une seule fois
-  const framedRef = useRef(false); // 1er cadrage caméra (attend carte prête)
-  // §2 : cadrage demandé alors que la carte n'était pas encore prête (nav à froid
-  // Liste→Carte). animateToRegion est un no-op avant onMapReady → on mémorise l'id
-  // et on rejoue le cadrage dès que la carte est prête ET l'écran au premier plan.
-  const pendingFrameRef = useRef<number | null>(null);
-  const mapReadyRef = useRef(false);
-  mapReadyRef.current = mapReady;
+  // §2 : chaque sélection (tap marqueur carte OU tap item Liste) émet une REQUÊTE de
+  // cadrage via ce token ; l'effet dédié la consomme APRÈS la fin des interactions
+  // (transition d'onglet incluse). Sans ça, l'animate lancé pendant le changement
+  // d'onglet — chemin Liste — était ignoré par la carte native (popup ok, caméra non).
+  const frameTargetRef = useRef<number | null>(null);
+  const [frameReq, setFrameReq] = useState(0);
 
   const active = useMemo<VehicleVM | null>(
     () => vehicles.find((v) => v.id === activeId) ?? null,
@@ -114,31 +113,30 @@ export function MapScreen() {
     );
   }, []);
 
-  // §2 : HANDLER UNIQUE de sélection. Met à jour SIMULTANÉMENT popup + tracé (via
-  // l'effet clé sur `active?.id`) + centrage caméra, éliminant toute désync entre
-  // le véhicule cadré et celui affiché dans la carte.
+  // §2 : HANDLER UNIQUE de sélection, appelé À L'IDENTIQUE par le tap marqueur carte
+  // ET le tap item Liste (deep-link). Met à jour le popup (activeId) + persiste, ET
+  // émet une requête de cadrage caméra — les deux, pour le MÊME véhicule, à chaque tap.
   const selectVehicle = useCallback(
     (id: number, opts: { persist?: boolean } = {}) => {
       const { persist = true } = opts;
       setActiveId(id);
       setShowCard(true);
-      // §2 : si la carte n'est pas prête (nav à froid depuis la Liste), on diffère le
-      // cadrage plutôt que de le perdre (animateToRegion serait un no-op).
-      if (mapReadyRef.current) frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
-      else pendingFrameRef.current = id;
+      frameTargetRef.current = id;
+      setFrameReq((n) => n + 1); // recentrage demandé même si le véhicule est déjà actif
       if (persist) void setLastConsulted(id); // §3 : mémorise le dernier consulté
     },
-    [frameVehicle],
+    [],
   );
 
-  // §2 : rejoue le cadrage différé dès que la carte est prête et l'écran focus.
+  // §2 : consomme la requête de cadrage. Attend que la carte soit prête (animateToRegion
+  // est un no-op avant onMapReady) ET la fin des interactions/transition d'onglet —
+  // sinon l'animation lancée pendant le switch d'onglet (chemin Liste) est ignorée.
   useEffect(() => {
-    if (!mapReady || !focused) return;
-    const id = pendingFrameRef.current;
-    if (id == null) return;
-    pendingFrameRef.current = null;
-    frameVehicle(vehiclesRef.current.find((v) => v.id === id) ?? null);
-  }, [mapReady, focused, frameVehicle]);
+    if (frameReq === 0 || !mapReady) return;
+    const v = vehiclesRef.current.find((x) => x.id === frameTargetRef.current) ?? null;
+    const task = InteractionManager.runAfterInteractions(() => frameVehicle(v));
+    return () => task.cancel();
+  }, [frameReq, mapReady, frameVehicle]);
 
   // Préférences de focus persistées (proxy « dernier ajouté » + dernier consulté).
   useEffect(() => {
@@ -159,14 +157,6 @@ export function MapScreen() {
     if (prefs.enrolled != null && target === prefs.enrolled) void clearLastEnrolled();
     selectVehicle(target); // persiste comme dernier consulté
   }, [prefs, vehicles, selectVehicle]);
-
-  // Premier cadrage caméra : attend que la carte soit prête (animateToRegion
-  // est un no-op avant `onMapReady`). Les sélections ultérieures cadrent direct.
-  useEffect(() => {
-    if (framedRef.current || !mapReady || !active) return;
-    framedRef.current = true;
-    frameVehicle(active);
-  }, [mapReady, active, frameVehicle]);
 
   // §4 : deep-link depuis la liste. Le param prend le dessus sur la sélection
   // initiale ; on l'efface après consommation pour que retaper le MÊME véhicule
