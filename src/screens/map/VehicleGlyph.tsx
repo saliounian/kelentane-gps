@@ -10,6 +10,7 @@ type Props = { v: Pick<VehicleVM, "iconKey" | "type" | "color">; size?: number; 
 // pin en dérive. La pointe (bas-centre) marque le point exact — les marqueurs qui
 // utilisent ce glyphe ancrent dessus (voir PIN_TIP_Y / PIN_HEAD_CY).
 const PIN_PATH = "M50 126 C 28 96 12 78 12 48 A 38 38 0 1 1 88 48 C 88 78 72 96 50 126 Z";
+const PIN_FILL = "#CAF811"; // couleur fixe du pin (demande client), sans bordure
 export const PIN_W_RATIO = 100 / 76; // boîte largeur / diamètre tête (tête ≈ 76 u)
 export const PIN_H_RATIO = (130 / 76); // boîte hauteur / diamètre tête
 export const PIN_TIP_Y = 126 / 130; // fraction verticale de la pointe (ancre)
@@ -30,7 +31,7 @@ export function VehicleGlyph({ v, size = 32, onIconLoad }: Props) {
   return (
     <View style={{ width: W, height: H }}>
       <Svg width={W} height={H} viewBox="0 0 100 130">
-        <Path d={PIN_PATH} fill={v.color} stroke="#fff" strokeWidth={6} strokeLinejoin="round" />
+        <Path d={PIN_PATH} fill={PIN_FILL} />
       </Svg>
       {/* Icône du type de véhicule, centrée dans la partie ronde (haute) du pin. */}
       <View
