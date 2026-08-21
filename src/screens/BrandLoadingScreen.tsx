@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
-import { Animated, Easing, View } from "react-native";
+import { Animated, Easing, Image, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "../theme/ThemeProvider";
-import { BRAND_LIME, BrandLockupV, PIN_DEEP } from "../ui/BrandLogo";
+import { BRAND_LIME, PIN_DEEP } from "../theme/brandColors";
 
 /**
  * Écran de chargement de marque (§5) — affiché juste APRÈS le splash natif statique,
@@ -14,8 +13,12 @@ import { BRAND_LIME, BrandLockupV, PIN_DEEP } from "../ui/BrandLogo";
  * `progress` : 0→1 si connu. Absent → barre indéterminée (va-et-vient) pendant que
  * la durée du chargement est inconnue.
  */
+// Écran de marque volontairement en fond CLAIR dans les deux thèmes : le lockup
+// vertical officiel a un wordmark noir, lisible seulement sur clair (aucune variante
+// verticale à wordmark blanc fournie par le client). Cohérent avec le splash natif.
+const BRAND_BG = "#F4F6F4";
+
 export function BrandLoadingScreen({ progress }: { progress?: number }) {
-  const { t, dark } = useTheme();
   const fade = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   const sweep = useRef(new Animated.Value(0)).current;
@@ -45,17 +48,21 @@ export function BrandLoadingScreen({ progress }: { progress?: number }) {
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.045] });
   const translateY = fade.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
-  const wordColor = dark ? "#F4F6F4" : "#101513";
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.bg, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ flex: 1, backgroundColor: BRAND_BG, alignItems: "center", justifyContent: "center" }}>
       <Animated.View style={{ opacity: fade, transform: [{ translateY }, { scale }] }}>
-        <BrandLockupV size={128} wordColor={wordColor} framed />
+        {/* Lockup vertical officiel (icône encadrée + wordmark), fichier raster réel. */}
+        <Image
+          source={require("../../assets/brand/lockup-vertical.png")}
+          style={{ width: 240, height: 240 * (539 / 768) }}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       {/* Barre de progression bas d'écran — dégradé vert Pin → lime. */}
       <View style={{ position: "absolute", left: 40, right: 40, bottom: 64 }}>
-        <View style={{ height: 5, borderRadius: 3, overflow: "hidden", backgroundColor: dark ? "rgba(255,255,255,0.10)" : "rgba(10,92,66,0.12)" }}>
+        <View style={{ height: 5, borderRadius: 3, overflow: "hidden", backgroundColor: "rgba(10,92,66,0.12)" }}>
           {progress != null ? (
             <View style={{ width: `${Math.max(0, Math.min(1, progress)) * 100}%`, height: 5 }}>
               <LinearGradient colors={[PIN_DEEP, BRAND_LIME]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />

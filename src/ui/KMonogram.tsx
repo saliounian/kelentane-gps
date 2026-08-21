@@ -1,11 +1,17 @@
-import { BrandGlyph } from "./BrandLogo";
+import { Image } from "react-native";
 
 /**
- * Marque Kelentane encadrée (glyphe K + flèche lime sur carré vert Pin). Conserve
- * l'API historique `{ size }` : toutes les instances (en-tête carte, écran auth,
- * splash de session) basculent d'un coup sur le nouveau logo vectoriel.
+ * Marque Kelentane encadrée — icône carrée officielle du client (fichier raster
+ * réel, assets/brand/icon.png). Conserve l'API historique `{ size }` : toutes les
+ * instances (en-tête carte, écran auth) basculent d'un coup sur le vrai logo.
  * Maquette : `KMonogram`.
  */
 export function KMonogram({ size = 38 }: { size?: number }) {
-  return <BrandGlyph size={size} framed />;
+  return (
+    <Image
+      source={require("../../assets/brand/icon.png")}
+      style={{ width: size, height: size, borderRadius: size * 0.32 }}
+      resizeMode="contain"
+    />
+  );
 }
