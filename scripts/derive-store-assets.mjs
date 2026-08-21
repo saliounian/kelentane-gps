@@ -8,8 +8,9 @@
  */
 import sharp from "sharp";
 const B = "assets/brand/";
-const SQUARE = B + "favicone.png";              // carré vert plein-bord opaque
-const GLYPH = B + "icon fond sombre png.png";    // glyphe K seul, fond transparent
+const SQUARE = B + "icone.png";                  // carré vert plein-bord OPAQUE (master)
+const GLYPH = B + "icon fond sombre png.png";    // glyphe K seul, fond transparent (silhouettes)
+const GREEN = "#055F45";                          // vert exact du carré (fond adaptive, seam invisible)
 
 // Silhouette blanche (forme du glyphe) sur transparent — pour icône notif Android
 // (rendue en blanc par le système) et couche monochrome adaptive.
@@ -28,14 +29,19 @@ async function main() {
   await sharp(SQUARE).resize(1024, 1024, { fit: "cover" }).png().toFile(B + "icon.png");
   await sharp(SQUARE).resize(1024, 1024, { fit: "cover" }).png().toFile(B + "splash-icon.png");
   await sharp(SQUARE).resize(196, 196, { fit: "cover" }).png().toFile(B + "favicon.png");
-  // Foreground adaptive : glyphe centré dans la zone de sécurité (~68 %), transparent.
-  await sharp(GLYPH)
-    .resize(700, 700, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .extend({ top: 162, bottom: 162, left: 162, right: 162, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  // Foreground adaptive : le CARRÉ complet (K + flèche) réduit dans la ZONE DE SÉCURITÉ
+  // (~62 % → 636/1024) et centré ; le reste rempli du MÊME vert que le carré (seam
+  // invisible). Ainsi le masque du launcher (cercle/squircle/goutte) ne rogne que du
+  // vert — le motif reste entier, sans fragment blanc parasite. backgroundColor sert
+  // de repli si le foreground ne couvrait pas tout.
+  await sharp(SQUARE)
+    .resize(636, 636, { fit: "contain", background: GREEN })
+    .extend({ top: 194, bottom: 194, left: 194, right: 194, background: GREEN })
     .png()
     .toFile(B + "adaptive-foreground.png");
-  await (await silhouette(GLYPH, 1024, 130)).toFile(B + "adaptive-monochrome.png");
-  await (await silhouette(GLYPH, 256, 40)).toFile(B + "notification-icon.png");
+  // Silhouettes (forme du glyphe → blanc sur transparent) bien dans la zone de sécurité.
+  await (await silhouette(GLYPH, 1024, 232)).toFile(B + "adaptive-monochrome.png");
+  await (await silhouette(GLYPH, 256, 54)).toFile(B + "notification-icon.png");
 
   // Copie ASCII (require() ne gère pas les espaces/apostrophes) du lockup vertical
   // réel pour l'écran de chargement in-app. Détouré (trim) puis borné en largeur.

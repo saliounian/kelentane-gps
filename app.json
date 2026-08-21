@@ -14,7 +14,7 @@
       "package": "com.kelentane.gps",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#0A5C42",
+        "backgroundColor": "#055F45",
         "foregroundImage": "./assets/brand/adaptive-foreground.png",
         "monochromeImage": "./assets/brand/adaptive-monochrome.png"
       },
