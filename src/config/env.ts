@@ -12,7 +12,7 @@
  * (inliné par Expo). Défaut = VPS de prod. Le mobile ne joint JAMAIS Traccar,
  * uniquement cette API.
  */
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://31.97.176.235:3000";
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "https://api.kelentane.com";
 
 /** Supabase (base app) — Auth + lectures RLS depuis le mobile. */
 export const SUPABASE_URL = "https://bgkbkjbjahgmfxcsrqmk.supabase.co";
