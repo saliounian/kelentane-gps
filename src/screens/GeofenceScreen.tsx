@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { KeyboardAvoidingView, LayoutRectangle, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type Region } from "react-native-maps";
+import MapView, { Circle, Marker, Polygon, PROVIDER_DEFAULT, type LatLng, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ import { useVehicles } from "../data/useVehicles";
 import { createGeofence, deleteGeofence, fetchGeofences, patchGeofence } from "../data/geofences";
 import { logError, toUserMessage } from "../data/errorMessages";
 import { ErrorState, Glass, GlassButton, MiniToast, Toggle } from "../ui";
+import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { GeofenceVM } from "../types/geofence";
 
@@ -33,6 +34,7 @@ export function GeofenceScreen() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null); // §5 : échec d'une action optimiste
 
+  const [mapType, setMapType] = useState<MapType>("standard");
   const [mode, setMode] = useState<"polygon" | "circle">("polygon");
   const [points, setPoints] = useState<LatLng[]>([]);
   const [center, setCenter] = useState<LatLng | null>(null);
@@ -153,6 +155,7 @@ export function GeofenceScreen() {
           provider={PROVIDER_DEFAULT}
           style={{ flex: 1 }}
           initialRegion={region}
+          mapType={mapType}
           onPress={(e) => {
             const c = e.nativeEvent.coordinate;
             if (mode === "polygon") setPoints((p) => [...p, c]);
@@ -180,6 +183,8 @@ export function GeofenceScreen() {
           <Glass t={t} dark={dark} radius={10} style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 12 }}>
             <Text style={{ fontSize: 11.5, color: t.sub, fontFamily: font.body.regular }}>{hint}</Text>
           </Glass>
+          {/* Switch plan/hybrid (cohérent avec MapScreen) */}
+          <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
         </View>
 
         {/* Panneau formulaire flottant, séparé de la carte, remonte avec le clavier.
@@ -264,7 +269,7 @@ export function GeofenceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <View style={{ height: 220 }}>
-        <MapView provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region}>
+        <MapView provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
           {renderZones()}
         </MapView>
         <View style={{ position: "absolute", top: insets.top + 8, left: 14 }}>
@@ -274,6 +279,10 @@ export function GeofenceScreen() {
           <Pressable onPress={() => { reset(); setView("edit"); }} style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" }}>
             <Plus size={22} color={LIME_ON} />
           </Pressable>
+        </View>
+        {/* Switch plan/hybrid (coin bas-droit : le coin haut-droit porte déjà le bouton +) */}
+        <View style={{ position: "absolute", bottom: 10, right: 14 }}>
+          <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
         </View>
       </View>
 

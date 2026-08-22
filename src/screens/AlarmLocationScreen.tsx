@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Text, View } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, type Region } from "react-native-maps";
+import MapView, { Marker, PROVIDER_DEFAULT, type MapType, type Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import { font } from "../theme/fonts";
 import { useTheme } from "../theme/ThemeProvider";
 import { ALARM_TYPE_BY_ID } from "../data/alarmTypes";
 import { Glass, GlassButton } from "../ui";
+import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 
 export function AlarmLocationScreen() {
@@ -23,6 +25,7 @@ export function AlarmLocationScreen() {
   const region: Region = { latitude: lat, longitude: lng, latitudeDelta: 0.02, longitudeDelta: 0.02 };
   const ty = ALARM_TYPE_BY_ID[a.type];
   const Icon = ty?.icon ?? Bell;
+  const [mapType, setMapType] = useState<MapType>("standard");
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
@@ -42,7 +45,7 @@ export function AlarmLocationScreen() {
 
       {/* carte */}
       <View style={{ flex: 1, marginHorizontal: 14, marginBottom: 16, borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: t.border }}>
-        <MapView provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region}>
+        <MapView provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
           <Marker coordinate={{ latitude: lat, longitude: lng }} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: ALERT, borderWidth: 3, borderColor: "#fff", alignItems: "center", justifyContent: "center" }}>
               <Icon size={20} color="#fff" />
@@ -66,6 +69,11 @@ export function AlarmLocationScreen() {
         {/* coords */}
         <View style={{ position: "absolute", bottom: 10, left: 10, borderRadius: 10, paddingVertical: 5, paddingHorizontal: 9, backgroundColor: hexA(dark ? "#000000" : "#ffffff", 0.7) }}>
           <Text style={{ fontSize: 11, color: t.text, fontFamily: font.mono.regular }}>{a.lat}, {a.lng}</Text>
+        </View>
+
+        {/* Switch plan/hybrid (coin bas-droit, opposé aux coords) */}
+        <View style={{ position: "absolute", bottom: 10, right: 10 }}>
+          <MapTypeButton t={t} mapType={mapType} onToggle={() => setMapType(toggleMapType)} />
         </View>
       </View>
     </View>
