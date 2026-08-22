@@ -15,11 +15,12 @@ export function MapTypeButton({ t, mapType, onToggle }: Props) {
       t={t}
       icon={Layers}
       size={38}
-      color={mapType === "satellite" ? ACCENT : t.text}
+      color={mapType === "hybrid" ? ACCENT : t.text}
       onPress={onToggle}
     />
   );
 }
 
-/** Bascule standard ↔ satellite (util partagé pour le setState). */
-export const toggleMapType = (m: MapType): MapType => (m === "satellite" ? "standard" : "satellite");
+/** Bascule standard ↔ hybrid (util partagé pour le setState). "hybrid" = imagerie
+ *  satellite AVEC labels (rues/lieux), contrairement à "satellite" qui les masque. */
+export const toggleMapType = (m: MapType): MapType => (m === "hybrid" ? "standard" : "hybrid");

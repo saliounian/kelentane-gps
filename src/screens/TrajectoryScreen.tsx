@@ -14,7 +14,7 @@ import { logError, toUserMessage } from "../data/errorMessages";
 import { DateRangeSheet, ErrorState, Glass, GlassButton, Metric, Skeleton } from "../ui";
 import { useVehicles } from "../data/useVehicles";
 import { useIconOverrides } from "../state/iconOverrides";
-import { VehicleGlyph } from "./map/VehicleGlyph";
+import { PIN_TIP_Y, VehicleGlyph } from "./map/VehicleGlyph";
 import { MapTypeButton, toggleMapType } from "./map/MapTypeButton";
 import type { RootStackParamList } from "../navigation/types";
 import type { RoutePoint, StopPoint } from "../types/reports";
@@ -77,10 +77,11 @@ function haversine(a: RoutePoint, b: RoutePoint): number {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-// §3 : vitesses de lecture recalibrées (~3-4× plus lentes que l'origine 0.4/0.9/1.8).
-// Nouveau « Vite » = ancien « Lent ». Tout se règle ici après test visuel terrain :
+// §4 : vitesses encore /4 après un nouveau retour terrain (lot précédent : 0.1/0.2/0.4).
+// Origine historique 0.4/0.9/1.8 → déjà ~3-4× plus lent → maintenant encore ÷4.
+// Les 3 paliers restent distincts (ratio 1:2:4). Tout se règle ici après test visuel :
 // avancement par tick = PROGRESS_STEP × SPEEDS[mode], un tick toutes les TICK_MS.
-const SPEEDS = { Lent: 0.1, Moyen: 0.2, Vite: 0.4 } as const;
+const SPEEDS = { Lent: 0.025, Moyen: 0.05, Vite: 0.1 } as const;
 const PROGRESS_STEP = 0.006; // fraction du trajet par tick, avant multiplicateur
 const TICK_MS = 40;
 type SpeedMode = keyof typeof SPEEDS;
@@ -208,6 +209,15 @@ export function TrajectoryScreen() {
   const cur = pts[idx];
   const coords = pts.map((p) => ({ latitude: p.lat, longitude: p.lng }));
 
+  // §3 : suivi caméra AUTO pendant la lecture — recentre sur le point courant à
+  // chaque nouveau point, sans pan manuel. `animateCamera` conserve le zoom courant
+  // (contrairement à `animateToRegion` qui le réinitialise). Actif en lecture seule ;
+  // à l'arrêt/scrub l'utilisateur reprend la main sur la caméra.
+  useEffect(() => {
+    if (!playing || !cur) return;
+    mapRef.current?.animateCamera({ center: { latitude: cur.lat, longitude: cur.lng } }, { duration: TICK_MS });
+  }, [playing, cur?.lat, cur?.lng]);
+
   // §1 : nom de lieu du point en cours. Adresse Traccar prioritaire (`cur.addr`,
   // même source que le popup carte). Sinon repli géocodage inverse du SEUL point
   // courant, debounced (~400 ms → pas d'appel par frame) + caché par coordonnée.
@@ -253,8 +263,8 @@ export function TrajectoryScreen() {
       <MapView ref={mapRef} provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region} mapType={mapType}>
         {coords.length > 1 ? <Polyline coordinates={coords} strokeColor={TRACK} strokeWidth={4} /> : null}
         {cur ? (
-          <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: 0.5 }}>
-            {/* Vraie icône du véhicule (cohérence app) ; fallback point si pas encore chargée. */}
+          <Marker coordinate={{ latitude: cur.lat, longitude: cur.lng }} anchor={{ x: 0.5, y: glyphV ? PIN_TIP_Y : 0.5 }}>
+            {/* Pin véhicule (pointe = position exacte) ; fallback point si icône pas prête. */}
             {glyphV ? (
               <VehicleGlyph v={glyphV} size={34} />
             ) : (

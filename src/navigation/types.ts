@@ -3,7 +3,8 @@ import type { AlarmEventVM } from "../types/alarm";
 
 /** Onglets (états `screen` maquette). Noms alignés sur TabId. */
 export type TabParamList = {
-  map: undefined;
+  /** §4 : deep-link depuis la liste — focalise `vehicleId` sur la carte. */
+  map: { vehicleId?: number } | undefined;
   list: undefined;
   alarm: undefined;
   stats: undefined;

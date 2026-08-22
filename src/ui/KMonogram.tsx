@@ -1,34 +1,17 @@
-import { Text, View } from "react-native";
-import { ACCENT, LIME_ON } from "../theme/tokens";
-import { font } from "../theme/fonts";
+import { Image } from "react-native";
 
-/** Monogramme K lime (logo marque). Maquette : `KMonogram`. */
+/**
+ * Marque Kelentane encadrée — icône carrée officielle du client (fichier raster
+ * réel, assets/brand/icon.png). Conserve l'API historique `{ size }` : toutes les
+ * instances (en-tête carte, écran auth) basculent d'un coup sur le vrai logo.
+ * Maquette : `KMonogram`.
+ */
 export function KMonogram({ size = 38 }: { size?: number }) {
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.32,
-        backgroundColor: ACCENT,
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: ACCENT,
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-      }}
-    >
-      <Text
-        style={{
-          color: LIME_ON,
-          fontSize: size * 0.58,
-          letterSpacing: -1,
-          fontFamily: font.display.black,
-        }}
-      >
-        K
-      </Text>
-    </View>
+    <Image
+      source={require("../../assets/brand/icon.png")}
+      style={{ width: size, height: size, borderRadius: size * 0.32 }}
+      resizeMode="contain"
+    />
   );
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { AlertTriangle, Battery, Hash, KeyRound, Lock, Plus, Search, Trash2 } from "lucide-react-native";
 import { ACCENT, ALERT, hexA, LIME_ON, PARKED } from "../theme/tokens";
 import { font } from "../theme/fonts";
@@ -12,10 +12,11 @@ import { usePrefs } from "../state/prefs";
 import { convSpeed, speedUnit } from "../i18n/units";
 import { useVehicles } from "../data/useVehicles";
 import { addVehicleAccess, deleteVehicle } from "../data/api";
+import { setLastEnrolled } from "../data/focusPrefs";
 import { toUserMessage } from "../data/errorMessages";
 import { iconForVehicle } from "../icons/vehicleIcons";
 import { BottomSheet, ErrorState, Field, Glass, SkeletonRow, StatusDot } from "../ui";
-import type { RootStackParamList } from "../navigation/types";
+import type { TabParamList } from "../navigation/types";
 import type { VehicleVM } from "../types/vehicle";
 
 export function ListScreen() {
@@ -23,7 +24,11 @@ export function ListScreen() {
   const { t: tr } = useTranslation();
   const { units } = usePrefs();
   const insets = useSafeAreaInsets();
-  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  // ListScreen est un onglet frère de `map` dans le MÊME Tab.Navigator : on
+  // navigue directement vers l'onglet Carte (pas via le parent stack `Tabs`), ce
+  // qui évite le bubbling ambigu parent→enfant et bascule l'onglet de façon
+  // déterministe. Rester sur l'onglet frère = simple switch, aucun écran empilé.
+  const nav = useNavigation<BottomTabNavigationProp<TabParamList>>();
   const { vehicles, loading, error, refresh } = useVehicles();
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -58,7 +63,9 @@ export function ListScreen() {
     setBusy(true);
     setAddErr(null);
     try {
-      await addVehicleAccess(imei.trim(), devicePwd.trim());
+      const created = await addVehicleAccess(imei.trim(), devicePwd.trim());
+      // §3 focus carte : proxy local « dernier device ajouté » (priorité (a)).
+      if (created?.id != null) void setLastEnrolled(created.id);
       closeAdd();
       refresh();
     } catch (e) {
@@ -167,7 +174,11 @@ export function ListScreen() {
               return (
                 <Pressable
                   key={v.id}
-                  onPress={() => (locked ? openAdd(v.imei) : nav.navigate("Detail", { vehicleId: v.id }))}
+                  // §4 : tap → onglet Carte focalisé sur ce véhicule (selectVehicle via
+                  // param). Les autres marqueurs restent affichés ; seul le focus change.
+                  // Détail reste accessible depuis la carte (bouton « + »). Device grisé
+                  // (revalidate) → ré-ajout au lieu de naviguer.
+                  onPress={() => (locked ? openAdd(v.imei) : nav.navigate("map", { vehicleId: v.id }))}
                   onLongPress={() => openDelete(v)}
                   delayLongPress={500}
                 >
