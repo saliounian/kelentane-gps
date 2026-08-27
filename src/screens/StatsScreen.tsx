@@ -80,7 +80,7 @@ export function StatsScreen() {
               <Pressable
                 key={v.id}
                 onPress={() => setVid(v.id)}
-                style={{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? ACCENT : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
+                style={{ flexShrink: 0, paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, backgroundColor: on ? ACCENT : t.glass, borderWidth: 1, borderColor: on ? ACCENT : t.border }}
               >
                 <Text style={{ fontSize: 13, color: on ? LIME_ON : t.text, fontFamily: font.body.semibold }}>{v.name}</Text>
               </Pressable>
