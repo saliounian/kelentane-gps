@@ -304,7 +304,9 @@ export function MapScreen() {
           <Image
             source={dark ? WORDMARK.dark : WORDMARK.light}
             resizeMode="contain"
-            style={{ width: "100%", height: 18, alignSelf: "flex-start" }}
+            // Wordmark 700×39 (≈17.9:1). On contraint à son ratio intrinsèque + hauteur
+            // modeste au lieu de width:"100%" : évite la boîte étirée et le vide autour.
+            style={{ height: 14, aspectRatio: 700 / 39, maxWidth: "100%", alignSelf: "flex-start" }}
           />
           <Text style={{ fontSize: 11, color: t.sub, fontFamily: font.body.regular, marginTop: 2 }}>
             {tr("map.summary", { count: vehicles.length, active: activeCount })}
