@@ -22,6 +22,7 @@ export function KmScreen() {
   const [customFrom, setCustomFrom] = useState<Date | null>(null);
   const [customTo, setCustomTo] = useState<Date | null>(null);
   const [data, setData] = useState<KmReport | null>(null);
+  const [sel, setSel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
 
@@ -39,6 +40,7 @@ export function KmScreen() {
         const r = await fetchKm(params.vehicleId, mode, from, to);
         if (alive) {
           setData(r);
+          setSel(Math.max(0, r.days.length - 1));
           setError(null);
         }
       } catch (e) {
@@ -92,7 +94,7 @@ export function KmScreen() {
             </Glass>
 
             <Glass t={t} dark={dark} style={{ padding: 14 }}>
-              <BarChart t={t} days={data.days} />
+              <BarChart t={t} days={data.days} selected={sel} onSelect={setSel} />
             </Glass>
 
             <Text style={{ fontSize: 13, color: t.sub, paddingLeft: 4, marginTop: 4, fontFamily: font.body.bold }}>
