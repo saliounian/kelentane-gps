@@ -19,6 +19,7 @@ import { RootNavigator } from "./src/navigation/RootNavigator";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { BrandLoadingScreen } from "./src/screens/BrandLoadingScreen";
 import { RemindersGate } from "./src/screens/RemindersGate";
+import { ForcedPasswordChangeScreen } from "./src/screens/ForcedPasswordChange";
 import { registerForPush } from "./src/data/push";
 import { VEHICLE_ASSETS } from "./src/icons/vehicleAssets";
 
@@ -28,7 +29,7 @@ import { VEHICLE_ASSETS } from "./src/icons/vehicleAssets";
  */
 function Root() {
   const { dark } = useTheme();
-  const { status } = useAuth();
+  const { status, mustChangePassword } = useAuth();
   // §5 : durée minimale de l'écran de chargement de marque pour que l'animation
   // (fondu + pulsation + barre dégradée) soit réellement perçue, même si la
   // restauration de session est instantanée. Prend le relais du splash natif.
@@ -45,10 +46,12 @@ function Root() {
   return (
     <>
       <StatusBar style={dark ? "light" : "dark"} />
-      {status === "checking" || !minElapsed ? (
+      {status === "checking" || !minElapsed || (status === "in" && mustChangePassword === null) ? (
         <BrandLoadingScreen />
       ) : status === "out" ? (
         <AuthScreen />
+      ) : mustChangePassword ? (
+        <ForcedPasswordChangeScreen />
       ) : (
         <>
           <RootNavigator />

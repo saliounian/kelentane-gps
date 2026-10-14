@@ -16,6 +16,7 @@ import { claimShare, createShare } from "../data/shares";
 import { logError, toUserMessage } from "../data/errorMessages";
 import { BottomSheet, Field, SectionLabel, Toggle } from "../ui";
 import type { LucideIcon } from "../types/models";
+import { PasswordChangeForm } from "./PasswordChangeForm";
 
 export function ProfileScreen() {
   const { t } = useTheme();
@@ -132,28 +133,10 @@ export function ProfileScreen() {
 
 function PasswordChangeSheet({ t, visible, onClose }: { t: Theme; visible: boolean; onClose: () => void }) {
   const { t: tr } = useTranslation();
-  const [pwd, setPwd] = useState("");
-  const [pwd2, setPwd2] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const save = async () => {
-    if (pwd.length < 4 || pwd !== pwd2) return setMsg(tr("profile.pwdRule"));
-    const { error } = await supabase.auth.updateUser({ password: pwd });
-    if (error) logError("ProfileScreen.updatePwd", error);
-    setMsg(error ? toUserMessage(error) : tr("profile.pwdUpdated"));
-    if (!error) {
-      setPwd("");
-      setPwd2("");
-    }
-  };
   return (
     <BottomSheet t={t} visible={visible} onClose={onClose}>
       <Text style={{ fontSize: 18, color: t.text, fontFamily: font.body.bold, marginBottom: 12 }}>{tr("profile.changePwd")}</Text>
-      <Field t={t} label={tr("profile.newPwd")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setMsg(null); }} />
-      <Field t={t} label={tr("profile.confirm")} icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setMsg(null); }} />
-      {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
-      <Pressable onPress={save} style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: ACCENT }}>
-        <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>{tr("profile.update")}</Text>
-      </Pressable>
+      <PasswordChangeForm t={t} successMessage={tr("profile.pwdUpdated")} />
     </BottomSheet>
   );
 }

@@ -320,6 +320,9 @@
     "confirm": "Confirmer",
     "pwdUpdated": "Mot de passe mis à jour.",
     "pwdRule": "Mot de passe ≥ 4 caractères et identique.",
+    "pwdTooShort": "Mot de passe ≥ {{n}} caractères.",
+    "pwdMismatch": "Les deux mots de passe ne correspondent pas.",
+    "pwdTooTrivial": "Trop simple à deviner — choisis autre chose.",
     "update": "Mettre à jour",
     "shareDesc": "Choisis un véhicule pour générer un jeton de partage (lecture).",
     "shareNone": "Aucun véhicule à partager (accès en consultation).",
@@ -334,6 +337,12 @@
     "phoneRule": "Entre un numéro valide (≥ 6 chiffres).",
     "saving": "Enregistrement…",
     "save": "Enregistrer"
+  },
+  "forcedPwd": {
+    "title": "Sécurise ton compte",
+    "desc": "Tu utilises encore le mot de passe par défaut. Choisis un nouveau mot de passe pour continuer.",
+    "submit": "Valider",
+    "stillRequired": "Le mot de passe par défaut semble toujours actif. Réessaie, ou contacte le support si le problème persiste."
   },
   "reminder": {
     "phoneTitle": "Ajoute ton numéro",

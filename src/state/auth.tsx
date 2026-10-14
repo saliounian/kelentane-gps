@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, usernameToEmail } from "../data/supabase";
 import i18n from "../i18n";
@@ -24,6 +24,10 @@ type SignUpInput = { fullName: string; phone: string; username: string; password
 type AuthCtx = {
   status: AuthStatus;
   session: Session | null;
+  /** null = pas encore déterminé (session présente, lecture en cours). */
+  mustChangePassword: boolean | null;
+  /** Relit clients.must_change_password en base et met à jour le contexte. */
+  recheckMustChangePassword: () => Promise<boolean>;
   signIn: (identifier: string, password: string, remember?: boolean) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
@@ -35,22 +39,52 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("checking");
   const [session, setSession] = useState<Session | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState<boolean | null>(null);
+  // Le login IMEI connaît déjà mustChangePassword (réponse API) : on pose setSession()
+  // nous-mêmes juste après, ce qui déclenche aussi "SIGNED_IN" côté onAuthStateChange —
+  // ce flag évite une 2e lecture (redondante) de clients.must_change_password.
+  const skipNextSignedInFetch = useRef(false);
+
+  const refetchMustChangePassword = async (uid: string): Promise<boolean> => {
+    const { data } = await supabase.from("clients").select("must_change_password").eq("id", uid).maybeSingle();
+    const v = (data as { must_change_password: boolean } | null)?.must_change_password === true;
+    setMustChangePassword(v);
+    return v;
+  };
 
   useEffect(() => {
     // §1 : charger le flag « remember » AVANT de restaurer la session (les écritures
     // de tokens rafraîchis au boot doivent viser le bon storage).
     loadRememberFlag()
       .then(() => supabase.auth.getSession())
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         setSession(data.session);
         setStatus(data.session ? "in" : "out");
+        if (data.session) await refetchMustChangePassword(data.session.user.id);
       });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
       setSession(s);
       setStatus(s ? "in" : "out");
+      if (!s) {
+        setMustChangePassword(null);
+        return;
+      }
+      if (e === "SIGNED_IN") {
+        if (skipNextSignedInFetch.current) {
+          skipNextSignedInFetch.current = false;
+        } else {
+          void refetchMustChangePassword(s.user.id);
+        }
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  const recheckMustChangePassword = async (): Promise<boolean> => {
+    const uid = session?.user?.id;
+    if (!uid) return false;
+    return refetchMustChangePassword(uid);
+  };
 
   const signIn = async (identifier: string, password: string, remember = true) => {
     const id = identifier.trim();
@@ -61,14 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // §2/§3.5 : un identifiant purement numérique = IMEI → login routé par l'API
     // (rate-limité par IMEI). Sinon login classique username/email direct Supabase.
     if (/^\d{10,17}$/.test(id)) {
-      const { accessToken, refreshToken } = await imeiLogin(id, password);
+      const { accessToken, refreshToken, mustChangePassword: mcp } = await imeiLogin(id, password);
+      skipNextSignedInFetch.current = true;
       const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-      if (error) throw authError(error);
+      if (error) {
+        skipNextSignedInFetch.current = false;
+        throw authError(error);
+      }
+      setMustChangePassword(mcp);
       return;
     }
     const email = usernameToEmail(id);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw authError(error);
+    // onAuthStateChange ("SIGNED_IN") lit clients.must_change_password pour ce flux.
   };
 
   const checkUsername = async (username: string): Promise<boolean> => {
@@ -115,8 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<AuthCtx>(
-    () => ({ status, session, signIn, signUp, signOut, checkUsername }),
-    [status, session],
+    () => ({ status, session, mustChangePassword, recheckMustChangePassword, signIn, signUp, signOut, checkUsername }),
+    [status, session, mustChangePassword],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

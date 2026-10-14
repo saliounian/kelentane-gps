@@ -107,8 +107,11 @@ export function fetchVehicles(signal?: AbortSignal): Promise<VehicleVM[]> {
  * Retourne les tokens de session que l'app pose via `supabase.auth.setSession`.
  * Erreur générique unique ; 429 si trop de tentatives.
  */
-export function imeiLogin(imei: string, password: string): Promise<{ accessToken: string; refreshToken: string }> {
-  return request<{ accessToken: string; refreshToken: string }>("/auth/imei-login", {
+export function imeiLogin(
+  imei: string,
+  password: string,
+): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }> {
+  return request<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }>("/auth/imei-login", {
     method: "POST",
     auth: false,
     body: { imei, password },

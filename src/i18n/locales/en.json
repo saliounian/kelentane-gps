@@ -320,6 +320,9 @@
     "confirm": "Confirm",
     "pwdUpdated": "Password updated.",
     "pwdRule": "Password must be ≥ 4 chars and match.",
+    "pwdTooShort": "Password must be ≥ {{n}} characters.",
+    "pwdMismatch": "Passwords don't match.",
+    "pwdTooTrivial": "Too easy to guess — pick something else.",
     "update": "Update",
     "shareDesc": "Pick a vehicle to generate a share token (read-only).",
     "shareNone": "No vehicle to share (view-only access).",
@@ -334,6 +337,12 @@
     "phoneRule": "Enter a valid number (≥ 6 digits).",
     "saving": "Saving…",
     "save": "Save"
+  },
+  "forcedPwd": {
+    "title": "Secure your account",
+    "desc": "You're still using the default password. Choose a new one to continue.",
+    "submit": "Confirm",
+    "stillRequired": "The default password still looks active. Try again, or contact support if this keeps happening."
   },
   "reminder": {
     "phoneTitle": "Add your number",
