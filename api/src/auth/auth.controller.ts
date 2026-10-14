@@ -32,16 +32,22 @@ export class AuthController {
   }
 
   /**
-   * POST /auth/imei-login { imei, password } → { accessToken, refreshToken }.
-   * Login par IMEI routé via l'API pour appliquer le RATE-LIMIT par IMEI (§3.5,
-   * partagé avec l'ajout de device). Le mobile pose la session via setSession.
-   * Erreur générique unique (anti-énumération) ; 429 si rate-limité.
+   * POST /auth/imei-login { imei, password } → { accessToken, refreshToken,
+   * mustChangePassword }. Login par IMEI routé via l'API pour appliquer le
+   * RATE-LIMIT par IMEI (§3.5, partagé avec l'ajout de device). Le mobile pose
+   * la session via setSession. Erreur générique unique (anti-énumération) ;
+   * 429 si rate-limité.
+   *
+   * mustChangePassword: boolean | null — null = indéterminable côté serveur
+   * (cf. SupabaseService.getMustChangePassword). Ne fait JAMAIS échouer le
+   * login : le mobile décide quoi faire de `null` (fail-closed, relecture
+   * côté client, jamais traité comme false).
    */
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("imei-login")
   async imeiLogin(
     @Body() body: { imei?: string; password?: string },
-  ): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }> {
+  ): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean | null }> {
     const imei = (body?.imei ?? "").replace(/\s/g, "");
     const password = body?.password ?? "";
     if (!/^\d{10,17}$/.test(imei) || !password) throw genericBad();

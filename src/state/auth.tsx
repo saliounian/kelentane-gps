@@ -19,15 +19,34 @@ function authError(raw: unknown): ApiError {
 
 export type AuthStatus = "checking" | "out" | "in";
 
+/**
+ * Résultat de la lecture clients.must_change_password — FAIL-CLOSED :
+ * - "loading"  lecture en cours (ou pas encore démarrée après connexion).
+ * - "required" valeur explicite `true` → mot de passe par défaut encore actif.
+ * - "ok"       valeur explicite `false` → rien à faire, entrée autorisée.
+ * - "unknown"  INDÉTERMINABLE (erreur, ligne absente, valeur ni true ni false,
+ *              timeout, exception) → ne doit JAMAIS laisser entrer dans l'app.
+ */
+export type MustChangePasswordStatus = "loading" | "required" | "ok" | "unknown";
+
+const MUST_CHANGE_PWD_TIMEOUT_MS = 10_000;
+
 type SignUpInput = { fullName: string; phone: string; username: string; password: string };
 
 type AuthCtx = {
   status: AuthStatus;
   session: Session | null;
-  /** null = pas encore déterminé (session présente, lecture en cours). */
-  mustChangePassword: boolean | null;
-  /** Relit clients.must_change_password en base et met à jour le contexte. */
-  recheckMustChangePassword: () => Promise<boolean>;
+  mustChangePasswordStatus: MustChangePasswordStatus;
+  /** Relance la lecture (bouton "Réessayer" de l'écran "unknown"). */
+  retryMustChangePasswordCheck: () => Promise<void>;
+  /**
+   * Relit le flag après un changement de mot de passe réussi (supabase.auth.updateUser).
+   * `ok: false` = lecture indéterminable (timeout/erreur/pas de session) → NE PAS
+   * laisser entrer. `ok: true, required: true` = flag recalculé toujours actif
+   * (ex. nouveau mdp qui vaut encore "123456") → NE PAS laisser entrer non plus.
+   * Seul `{ ok: true, required: false }` autorise l'entrée dans l'app.
+   */
+  recheckMustChangePassword: () => Promise<{ ok: boolean; required: boolean }>;
   signIn: (identifier: string, password: string, remember?: boolean) => Promise<void>;
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => Promise<void>;
@@ -36,20 +55,51 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+/**
+ * Lecture brute de clients.must_change_password. Ne renvoie `true`/`false` que
+ * pour une valeur EXPLICITE en base ; tout le reste (ligne absente, colonne
+ * null/undefined, erreur SQL, exception, timeout) → `null` ("indéterminable").
+ * Timeout 10 s via Promise.race : ne reste JAMAIS en attente indéfinie. Ne
+ * lève JAMAIS (try/catch) : le caller n'a pas besoin de .catch pour ÇA, mais
+ * on en ajoute quand même là où cette fonction est appelée (défense en
+ * profondeur, cf. useEffect ci-dessous).
+ */
+async function fetchMustChangePasswordRow(uid: string): Promise<boolean | null> {
+  try {
+    const query = supabase.from("clients").select("must_change_password").eq("id", uid).maybeSingle();
+    const timeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("must_change_password: timeout 10s")), MUST_CHANGE_PWD_TIMEOUT_MS);
+    });
+    const { data, error } = await Promise.race([query, timeout]);
+    if (error) {
+      logError("auth.fetchMustChangePassword", error);
+      return null;
+    }
+    const v = (data as { must_change_password: boolean | null } | null)?.must_change_password;
+    if (v === true) return true;
+    if (v === false) return false;
+    return null; // ligne absente, ou valeur ni true ni false
+  } catch (e) {
+    logError("auth.fetchMustChangePassword", e);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("checking");
   const [session, setSession] = useState<Session | null>(null);
-  const [mustChangePassword, setMustChangePassword] = useState<boolean | null>(null);
-  // Le login IMEI connaît déjà mustChangePassword (réponse API) : on pose setSession()
-  // nous-mêmes juste après, ce qui déclenche aussi "SIGNED_IN" côté onAuthStateChange —
-  // ce flag évite une 2e lecture (redondante) de clients.must_change_password.
+  const [mustChangePasswordStatus, setMustChangePasswordStatus] = useState<MustChangePasswordStatus>("loading");
+  // Le login IMEI pilote lui-même le résultat (y compris la relecture obligatoire
+  // du cas "false", cf. signIn) : on empêche onAuthStateChange("SIGNED_IN") de
+  // lancer sa propre lecture concurrente pour ce même login.
   const skipNextSignedInFetch = useRef(false);
 
-  const refetchMustChangePassword = async (uid: string): Promise<boolean> => {
-    const { data } = await supabase.from("clients").select("must_change_password").eq("id", uid).maybeSingle();
-    const v = (data as { must_change_password: boolean } | null)?.must_change_password === true;
-    setMustChangePassword(v);
-    return v;
+  const refetchMustChangePassword = async (uid: string): Promise<MustChangePasswordStatus> => {
+    setMustChangePasswordStatus("loading");
+    const v = await fetchMustChangePasswordRow(uid);
+    const next: MustChangePasswordStatus = v === true ? "required" : v === false ? "ok" : "unknown";
+    setMustChangePasswordStatus(next);
+    return next;
   };
 
   useEffect(() => {
@@ -61,29 +111,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(data.session);
         setStatus(data.session ? "in" : "out");
         if (data.session) await refetchMustChangePassword(data.session.user.id);
+      })
+      .catch((e) => {
+        // Échec du boot (storage/session) : jamais de "checking" indéfini → repli
+        // sûr sur "out" (écran de connexion, l'utilisateur peut se reconnecter).
+        logError("auth.boot", e);
+        setStatus("out");
       });
+
     const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
       setSession(s);
       setStatus(s ? "in" : "out");
       if (!s) {
-        setMustChangePassword(null);
+        setMustChangePasswordStatus("loading"); // repart propre pour la prochaine connexion
         return;
       }
       if (e === "SIGNED_IN") {
         if (skipNextSignedInFetch.current) {
           skipNextSignedInFetch.current = false;
         } else {
-          void refetchMustChangePassword(s.user.id);
+          refetchMustChangePassword(s.user.id).catch((err) => {
+            logError("auth.onAuthStateChange.refetch", err);
+            setMustChangePasswordStatus("unknown");
+          });
         }
       }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const recheckMustChangePassword = async (): Promise<boolean> => {
+  const retryMustChangePasswordCheck = async (): Promise<void> => {
     const uid = session?.user?.id;
-    if (!uid) return false;
-    return refetchMustChangePassword(uid);
+    if (!uid) {
+      setMustChangePasswordStatus("unknown");
+      return;
+    }
+    await refetchMustChangePassword(uid);
+  };
+
+  const recheckMustChangePassword = async (): Promise<{ ok: boolean; required: boolean }> => {
+    const uid = session?.user?.id;
+    if (!uid) return { ok: false, required: true };
+    const result = await refetchMustChangePassword(uid);
+    if (result === "unknown") return { ok: false, required: true };
+    return { ok: true, required: result === "required" };
   };
 
   const signIn = async (identifier: string, password: string, remember = true) => {
@@ -97,12 +168,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (/^\d{10,17}$/.test(id)) {
       const { accessToken, refreshToken, mustChangePassword: mcp } = await imeiLogin(id, password);
       skipNextSignedInFetch.current = true;
-      const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      const { data: sessionData, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
       if (error) {
         skipNextSignedInFetch.current = false;
         throw authError(error);
       }
-      setMustChangePassword(mcp);
+      const uid = sessionData.session?.user.id;
+      if (mcp === true) {
+        // L'API dit explicitement "oui" → on bloque directement, pas de relecture requise.
+        setMustChangePasswordStatus("required");
+      } else if (mcp === false && uid) {
+        // Jamais se fier seul à "false" venant de l'API → relecture base obligatoire.
+        await refetchMustChangePassword(uid);
+      } else {
+        // mcp === null (indéterminable côté serveur) ou uid introuvable → fail-closed.
+        setMustChangePasswordStatus("unknown");
+      }
       return;
     }
     const email = usernameToEmail(id);
@@ -155,8 +236,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<AuthCtx>(
-    () => ({ status, session, mustChangePassword, recheckMustChangePassword, signIn, signUp, signOut, checkUsername }),
-    [status, session, mustChangePassword],
+    () => ({
+      status,
+      session,
+      mustChangePasswordStatus,
+      retryMustChangePasswordCheck,
+      recheckMustChangePassword,
+      signIn,
+      signUp,
+      signOut,
+      checkUsername,
+    }),
+    [status, session, mustChangePasswordStatus],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

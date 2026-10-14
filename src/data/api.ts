@@ -110,7 +110,7 @@ export function fetchVehicles(signal?: AbortSignal): Promise<VehicleVM[]> {
 export function imeiLogin(
   imei: string,
   password: string,
-): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }> {
+): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean | null }> {
   return request<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }>("/auth/imei-login", {
     method: "POST",
     auth: false,

@@ -342,7 +342,16 @@
     "title": "Sécurise ton compte",
     "desc": "Tu utilises encore le mot de passe par défaut. Choisis un nouveau mot de passe pour continuer.",
     "submit": "Valider",
-    "stillRequired": "Le mot de passe par défaut semble toujours actif. Réessaie, ou contacte le support si le problème persiste."
+    "checking": "Vérification…",
+    "stillRequired": "Le mot de passe par défaut semble toujours actif. Réessaie, ou contacte le support si le problème persiste.",
+    "checkFailed": "Impossible de vérifier que le mot de passe a bien été changé. Réessaie."
+  },
+  "accountCheck": {
+    "title": "Impossible de vérifier ton compte",
+    "desc": "La connexion a été établie, mais la vérification de sécurité du compte a échoué. Vérifie ta connexion internet et réessaie.",
+    "retry": "Réessayer",
+    "retrying": "Vérification…",
+    "logout": "Se déconnecter"
   },
   "reminder": {
     "phoneTitle": "Ajoute ton numéro",

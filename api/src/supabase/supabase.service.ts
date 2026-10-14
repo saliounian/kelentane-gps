@@ -59,15 +59,26 @@ export class SupabaseService {
     return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, userId: data.session.user.id };
   }
 
-  /** Flag "mot de passe compte par défaut non changé" (walk-up IMEI, §2). */
-  async getMustChangePassword(userId: string): Promise<boolean> {
-    if (!this.client) return false;
+  /**
+   * Flag "mot de passe compte par défaut non changé" (walk-up IMEI, §2).
+   * `null` = INDÉTERMINABLE (client Supabase indisponible, erreur SQL, ligne
+   * `clients` absente, ou valeur colonne inattendue). Fail-closed : l'appelant
+   * (auth.controller.ts) renvoie ce `null` tel quel au mobile plutôt que de le
+   * confondre avec `false` — ne JAMAIS traiter `null` comme "pas besoin de
+   * changer le mot de passe".
+   */
+  async getMustChangePassword(userId: string): Promise<boolean | null> {
+    if (!this.client) return null;
     const { data, error } = await this.client.from("clients").select("must_change_password").eq("id", userId).maybeSingle();
     if (error) {
       this.log.error(`getMustChangePassword ${userId}: ${error.message}`);
-      return false;
+      return null;
     }
-    return (data as { must_change_password: boolean } | null)?.must_change_password === true;
+    if (!data) return null;
+    const v = (data as { must_change_password: boolean | null }).must_change_password;
+    if (v === true) return true;
+    if (v === false) return false;
+    return null;
   }
 
   /**

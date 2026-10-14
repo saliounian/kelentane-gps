@@ -342,7 +342,16 @@
     "title": "Secure your account",
     "desc": "You're still using the default password. Choose a new one to continue.",
     "submit": "Confirm",
-    "stillRequired": "The default password still looks active. Try again, or contact support if this keeps happening."
+    "checking": "Checking…",
+    "stillRequired": "The default password still looks active. Try again, or contact support if this keeps happening.",
+    "checkFailed": "Couldn't confirm the password was changed. Try again."
+  },
+  "accountCheck": {
+    "title": "Couldn't verify your account",
+    "desc": "You're signed in, but the account security check failed. Check your internet connection and try again.",
+    "retry": "Retry",
+    "retrying": "Checking…",
+    "logout": "Log out"
   },
   "reminder": {
     "phoneTitle": "Add your number",

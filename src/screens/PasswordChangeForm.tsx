@@ -35,6 +35,8 @@ export interface PasswordChangeFormProps {
   successMessage?: string;
   /** Appelé après une mise à jour réussie de supabase.auth.updateUser. */
   onSuccess?: () => void;
+  /** Désactive le bouton depuis le parent (ex. relecture du flag en cours après succès). */
+  busy?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function PasswordChangeForm({
   submitLabel,
   successMessage,
   onSuccess,
+  busy = false,
 }: PasswordChangeFormProps) {
   const { t: tr } = useTranslation();
   const [pwd, setPwd] = useState("");
@@ -87,8 +90,8 @@ export function PasswordChangeForm({
       {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
       <Pressable
         onPress={save}
-        disabled={saving}
-        style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: saving ? hexA(ACCENT, 0.5) : ACCENT }}
+        disabled={saving || busy}
+        style={{ padding: 14, borderRadius: 14, alignItems: "center", backgroundColor: saving || busy ? hexA(ACCENT, 0.5) : ACCENT }}
       >
         <Text style={{ fontSize: 15, color: LIME_ON, fontFamily: font.body.bold }}>
           {saving ? tr("profile.saving") : submitLabel ?? tr("profile.update")}

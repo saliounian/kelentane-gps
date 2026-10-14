@@ -22,15 +22,24 @@ export function ForcedPasswordChangeScreen() {
   const { recheckMustChangePassword } = useAuth();
   const insets = useSafeAreaInsets();
   const [err, setErr] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const handleSuccess = async () => {
     setErr(null);
-    // Le trigger Postgres recalcule must_change_password à l'update d'auth.users ;
-    // on relit pour confirmer avant de laisser entrer (sinon, erreur affichée).
-    const stillRequired = await recheckMustChangePassword();
-    if (stillRequired) setErr(tr("forcedPwd.stillRequired"));
-    // Sinon : le contexte passe mustChangePassword à false, App.tsx re-rend
-    // automatiquement l'app normale — rien d'autre à faire ici.
+    setChecking(true);
+    try {
+      // Le trigger Postgres recalcule must_change_password à l'update d'auth.users ;
+      // on relit pour confirmer avant de laisser entrer. ok=false = indéterminable
+      // (timeout/erreur) → jamais laissé passer. required=true (même ok=true) =
+      // le flag est toujours actif (ex. nouveau mdp qui vaut encore le défaut).
+      const { ok, required } = await recheckMustChangePassword();
+      if (!ok) setErr(tr("forcedPwd.checkFailed"));
+      else if (required) setErr(tr("forcedPwd.stillRequired"));
+      // Sinon (ok && !required) : le contexte passe mustChangePasswordStatus à "ok",
+      // App.tsx re-rend automatiquement l'app normale — rien d'autre à faire ici.
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -47,9 +56,20 @@ export function ForcedPasswordChangeScreen() {
         </Text>
       </View>
 
-      <PasswordChangeForm t={t} minLength={8} rejectTrivial submitLabel={tr("forcedPwd.submit")} onSuccess={handleSuccess} />
+      <PasswordChangeForm
+        t={t}
+        minLength={8}
+        rejectTrivial
+        submitLabel={tr("forcedPwd.submit")}
+        onSuccess={handleSuccess}
+        busy={checking}
+      />
 
-      {err ? (
+      {checking ? (
+        <Text style={{ fontSize: 12.5, color: t.sub, marginTop: 14, textAlign: "center", fontFamily: font.body.regular }}>
+          {tr("forcedPwd.checking")}
+        </Text>
+      ) : err ? (
         <Text style={{ fontSize: 12.5, color: ALERT, marginTop: 14, textAlign: "center", fontFamily: font.body.regular }}>
           {err}
         </Text>
