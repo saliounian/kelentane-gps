@@ -342,6 +342,7 @@
     "title": "Secure your account",
     "desc": "You're still using the default password. Choose a new one to continue.",
     "submit": "Confirm",
+    "pwdHint": "At least 6 characters. Avoid \"123456\" and obvious sequences (abcdef, 012345...).",
     "checking": "Checking…",
     "stillRequired": "The default password still looks active. Try again, or contact support if this keeps happening.",
     "checkFailed": "Couldn't confirm the password was changed. Try again."

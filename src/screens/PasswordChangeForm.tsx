@@ -9,16 +9,17 @@ import { logError, toUserMessage } from "../data/errorMessages";
 import { Field } from "../ui";
 
 /** Rejette "123456" et les suites triviales évidentes (tout identique, séquence
- *  strictement croissante/décroissante, quelques classiques "password"/"azerty"...). */
+ *  strictement croissante/décroissante de chiffres OU de lettres — "012345",
+ *  "654321", "abcdef", "fedcba", quelques classiques "password"/"azerty"...). */
 function isTrivialPassword(pwd: string): boolean {
   const p = pwd.trim().toLowerCase();
   if (p === "123456") return true;
-  if (/^(.)\1+$/.test(p)) return true; // ex. "aaaaaaaa", "11111111"
-  if (/^\d+$/.test(p)) {
-    const digits = p.split("").map(Number);
-    const asc = digits.every((v, i) => i === 0 || v === digits[i - 1] + 1);
-    const desc = digits.every((v, i) => i === 0 || v === digits[i - 1] - 1);
-    if (asc || desc) return true;
+  if (/^(.)\1+$/.test(p)) return true; // ex. "aaaaaa", "111111"
+  if (/^[a-z]+$/.test(p) || /^\d+$/.test(p)) {
+    const chars = p.split("");
+    const asc = chars.every((c, i) => i === 0 || c.charCodeAt(0) === chars[i - 1].charCodeAt(0) + 1);
+    const desc = chars.every((c, i) => i === 0 || c.charCodeAt(0) === chars[i - 1].charCodeAt(0) - 1);
+    if (asc || desc) return true; // ex. "012345", "654321", "abcdef", "fedcba"
   }
   const common = ["password", "motdepasse", "azertyuiop", "qwertyuiop", "00000000", "12345678", "87654321"];
   return common.includes(p);
@@ -37,6 +38,8 @@ export interface PasswordChangeFormProps {
   onSuccess?: () => void;
   /** Désactive le bouton depuis le parent (ex. relecture du flag en cours après succès). */
   busy?: boolean;
+  /** Texte d'aide affiché sous les champs (absent par défaut = comportement historique). */
+  hint?: string;
 }
 
 /**
@@ -52,6 +55,7 @@ export function PasswordChangeForm({
   successMessage,
   onSuccess,
   busy = false,
+  hint,
 }: PasswordChangeFormProps) {
   const { t: tr } = useTranslation();
   const [pwd, setPwd] = useState("");
@@ -86,6 +90,7 @@ export function PasswordChangeForm({
   return (
     <View>
       <Field t={t} label={tr("profile.newPwd")} icon={KeyRound} placeholder="••••••" secure value={pwd} onChangeText={(v) => { setPwd(v); setMsg(null); }} />
+      {hint ? <Text style={{ fontSize: 11.5, color: t.sub, marginTop: -6, marginBottom: 10, fontFamily: font.body.regular }}>{hint}</Text> : null}
       <Field t={t} label={tr("profile.confirm")} icon={KeyRound} placeholder="••••••" secure value={pwd2} onChangeText={(v) => { setPwd2(v); setMsg(null); }} />
       {msg ? <Text style={{ fontSize: 12.5, color: t.sub, marginBottom: 8, fontFamily: font.body.regular }}>{msg}</Text> : null}
       <Pressable

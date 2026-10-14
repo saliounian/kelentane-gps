@@ -342,6 +342,7 @@
     "title": "Sécurise ton compte",
     "desc": "Tu utilises encore le mot de passe par défaut. Choisis un nouveau mot de passe pour continuer.",
     "submit": "Valider",
+    "pwdHint": "Au moins 6 caractères. Évite \"123456\" et les suites évidentes (abcdef, 012345...).",
     "checking": "Vérification…",
     "stillRequired": "Le mot de passe par défaut semble toujours actif. Réessaie, ou contacte le support si le problème persiste.",
     "checkFailed": "Impossible de vérifier que le mot de passe a bien été changé. Réessaie."

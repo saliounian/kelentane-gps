@@ -58,11 +58,12 @@ export function ForcedPasswordChangeScreen() {
 
       <PasswordChangeForm
         t={t}
-        minLength={8}
+        minLength={6}
         rejectTrivial
         submitLabel={tr("forcedPwd.submit")}
         onSuccess={handleSuccess}
         busy={checking}
+        hint={tr("forcedPwd.pwdHint")}
       />
 
       {checking ? (
