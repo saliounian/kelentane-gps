@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpException, HttpStatus, Param, ParseIntPipe, Post, UnauthorizedException } from "@nestjs/common";
+import { Body, Controller, Delete, Headers, HttpException, HttpStatus, Param, ParseIntPipe, Post, UnauthorizedException } from "@nestjs/common";
 import { SharesService } from "./shares.service";
 import { SupabaseService } from "../supabase/supabase.service";
 
@@ -29,6 +29,18 @@ export class SharesController {
     if (!body?.token) throw new HttpException("token requis", HttpStatus.BAD_REQUEST);
     try {
       return await this.shares.claim(body.token, user.id);
+    } catch (e) {
+      throw this.wrap(e);
+    }
+  }
+
+  /** DELETE /shares/:id (auth, rôle 'action' sur le véhicule) → révoque un partage. */
+  @Delete("shares/:id")
+  async remove(@Param("id") id: string, @Headers("authorization") auth?: string) {
+    const user = await this.supa.getUserFromToken(auth);
+    if (!user) throw new UnauthorizedException("Authentification requise");
+    try {
+      return await this.shares.revoke(id, user.id);
     } catch (e) {
       throw this.wrap(e);
     }

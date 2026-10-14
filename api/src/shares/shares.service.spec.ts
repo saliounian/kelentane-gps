@@ -76,3 +76,33 @@ describe("SharesService — H1 gating émission de partage (rôle 'action')", ()
     expect(access.allowed).not.toHaveBeenCalled();
   });
 });
+
+// H2 — révoquer un partage (DELETE /shares/:id) exige le rôle 'action' sur le
+// véhicule concerné ; 404 si le partage n'existe pas, 403 sinon.
+describe("SharesService — H2 gating révocation de partage (rôle 'action')", () => {
+  it("revoke() partage introuvable → 404 (aucune garde d'accès évaluée)", async () => {
+    const { service, supa, access } = makeDeps("action");
+    (supa.client.from as jest.Mock).mockReturnValueOnce(chain({ data: null, error: null })); // select share
+    expect(await statusOf(service.revoke("missing", "u1"))).toBe(404);
+    expect(access.allowed).not.toHaveBeenCalled();
+  });
+
+  it("revoke() en consultation → 403 (partage NON supprimé)", async () => {
+    const { service, supa } = makeDeps("consultation");
+    (supa.client.from as jest.Mock)
+      .mockReturnValueOnce(chain({ data: { id: "s1", device_id: ROW }, error: null })) // select share
+      .mockReturnValueOnce(chain({ data: { imei: IMEI }, error: null })); // select device (imei)
+    expect(await statusOf(service.revoke("s1", "u1"))).toBe(403);
+    expect(supa.client.from).toHaveBeenCalledTimes(2); // pas de 3e appel = pas de delete
+  });
+
+  it("revoke() en action → supprime le partage", async () => {
+    const { service, supa } = makeDeps("action");
+    (supa.client.from as jest.Mock)
+      .mockReturnValueOnce(chain({ data: { id: "s1", device_id: ROW }, error: null })) // select share
+      .mockReturnValueOnce(chain({ data: { imei: IMEI }, error: null })) // select device (imei)
+      .mockReturnValueOnce(chain({ error: null })); // delete
+    const r = await service.revoke("s1", "u1");
+    expect(r).toEqual({ revoked: true });
+  });
+});

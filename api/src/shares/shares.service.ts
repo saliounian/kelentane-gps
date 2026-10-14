@@ -61,4 +61,41 @@ export class SharesService {
     }
     return { ok: true };
   }
+
+  /**
+   * Révoque un partage (§device_shares). Rôle 'action' requis sur le véhicule
+   * concerné (même garde que les autres écritures — pas réservé au créateur du
+   * partage). 404 si le partage n'existe pas, 403 si rôle insuffisant.
+   *
+   * Pas de nettoyage device_access : vérifié dans AccessService.loadAccess —
+   * l'accès issu d'un partage est résolu EN DIRECT depuis device_shares.shared_with
+   * à chaque requête (scope read|commands → consultation|action), aucune ligne
+   * device_access n'est créée lors du claim. Supprimer la ligne device_shares
+   * suffit donc à révoquer intégralement l'accès.
+   */
+  async revoke(shareId: string, userId: string): Promise<{ revoked: true }> {
+    const client = this.client();
+    const { data: share, error } = await client
+      .from("device_shares")
+      .select("id, device_id")
+      .eq("id", shareId)
+      .maybeSingle();
+    if (error) throw new ServiceUnavailableException(error.message);
+    if (!share) throw new NotFoundException("Partage introuvable");
+
+    const { data: device, error: devErr } = await client
+      .from("devices")
+      .select("imei")
+      .eq("id", (share as { device_id: string }).device_id)
+      .maybeSingle();
+    if (devErr) throw new ServiceUnavailableException(devErr.message);
+    if (!device) throw new NotFoundException("Partage introuvable");
+
+    const allowed = await this.access.allowed(userId);
+    this.access.assertAction(allowed, (device as { imei: string }).imei); // 403 si rôle insuffisant
+
+    const { error: delErr } = await client.from("device_shares").delete().eq("id", shareId);
+    if (delErr) throw new ServiceUnavailableException(delErr.message);
+    return { revoked: true };
+  }
 }
