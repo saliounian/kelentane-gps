@@ -48,12 +48,26 @@ export class SupabaseService {
    * pour que le mobile les pose via `setSession`. Sert au login IMEI routé par l'API
    * (rate-limit). Retourne null si identifiants invalides.
    */
-  async passwordSignIn(email: string, password: string): Promise<{ accessToken: string; refreshToken: string } | null> {
+  async passwordSignIn(
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string; refreshToken: string; userId: string } | null> {
     if (!this.url || !this.publishableKey) return null;
     const c = createClient(this.url, this.publishableKey, { auth: { persistSession: false } });
     const { data, error } = await c.auth.signInWithPassword({ email, password });
     if (error || !data.session) return null;
-    return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token };
+    return { accessToken: data.session.access_token, refreshToken: data.session.refresh_token, userId: data.session.user.id };
+  }
+
+  /** Flag "mot de passe compte par défaut non changé" (walk-up IMEI, §2). */
+  async getMustChangePassword(userId: string): Promise<boolean> {
+    if (!this.client) return false;
+    const { data, error } = await this.client.from("clients").select("must_change_password").eq("id", userId).maybeSingle();
+    if (error) {
+      this.log.error(`getMustChangePassword ${userId}: ${error.message}`);
+      return false;
+    }
+    return (data as { must_change_password: boolean } | null)?.must_change_password === true;
   }
 
   /**

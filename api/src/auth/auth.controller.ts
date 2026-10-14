@@ -39,7 +39,9 @@ export class AuthController {
    */
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("imei-login")
-  async imeiLogin(@Body() body: { imei?: string; password?: string }): Promise<{ accessToken: string; refreshToken: string }> {
+  async imeiLogin(
+    @Body() body: { imei?: string; password?: string },
+  ): Promise<{ accessToken: string; refreshToken: string; mustChangePassword: boolean }> {
     const imei = (body?.imei ?? "").replace(/\s/g, "");
     const password = body?.password ?? "";
     if (!/^\d{10,17}$/.test(imei) || !password) throw genericBad();
@@ -54,6 +56,7 @@ export class AuthController {
     const session = await this.supa.passwordSignIn(`${imei}@kelentane.com`, password);
     await this.devices.loginBump(imei, !!session); // succès → reset ; échec → +1
     if (!session) throw genericBad();
-    return session;
+    const mustChangePassword = await this.supa.getMustChangePassword(session.userId);
+    return { accessToken: session.accessToken, refreshToken: session.refreshToken, mustChangePassword };
   }
 }
