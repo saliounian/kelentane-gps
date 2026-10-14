@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpException, HttpStatus, Post, Query } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { SupabaseService } from "../supabase/supabase.service";
 import { DevicesService } from "../supabase/devices.service";
 
@@ -36,6 +37,7 @@ export class AuthController {
    * partagé avec l'ajout de device). Le mobile pose la session via setSession.
    * Erreur générique unique (anti-énumération) ; 429 si rate-limité.
    */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("imei-login")
   async imeiLogin(@Body() body: { imei?: string; password?: string }): Promise<{ accessToken: string; refreshToken: string }> {
     const imei = (body?.imei ?? "").replace(/\s/g, "");

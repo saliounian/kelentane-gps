@@ -1,7 +1,10 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { AppThrottlerGuard } from "./app-throttler.guard";
 import { AlarmsModule } from "./alarms/alarms.module";
 import { AuthModule } from "./auth/auth.module";
 import { CommandsModule } from "./commands/commands.module";
@@ -19,6 +22,8 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: [".env"] }),
+    // Rate-limit global : 120 req/min/IP par défaut (surchargé par route via @Throttle).
+    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 120 }]),
     SupabaseModule,
     TraccarModule,
     VehiclesModule,
@@ -34,6 +39,6 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     RealtimeModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: AppThrottlerGuard }],
 })
 export class AppModule {}

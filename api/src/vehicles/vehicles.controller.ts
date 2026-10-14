@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpException, HttpStatus, Logger, Param, ParseIntPipe, Patch, Post, UnauthorizedException, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { VehiclesService } from "./vehicles.service";
 import { SupabaseService } from "../supabase/supabase.service";
 import { AccountsService } from "../supabase/accounts.service";
@@ -62,6 +63,7 @@ export class VehiclesController {
    * IMEI + mot de passe du dispositif (§3). C'est le chemin « Ajouter un dispositif »
    * de l'app. Erreur générique unique (anti-énumération), 429 si rate-limité.
    */
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("access")
   async addAccess(@Body() body: AccessBody, @CurrentUser() user: AuthUser): Promise<VehicleVM> {
     if (!body?.imei) throw new HttpException("IMEI requis", HttpStatus.BAD_REQUEST);

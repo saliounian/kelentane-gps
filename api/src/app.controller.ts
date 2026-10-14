@@ -1,4 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { AppService } from "./app.service";
 
 @Controller()
@@ -10,7 +11,8 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  /** Sonde de vivacité de l'API façade. */
+  /** Sonde de vivacité de l'API façade — exclue du rate-limit global. */
+  @SkipThrottle()
   @Get("health")
   health(): { status: string; service: string } {
     return { status: "ok", service: "kelentane-api" };
