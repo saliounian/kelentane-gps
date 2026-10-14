@@ -21,8 +21,26 @@ type ClientState = { sub: Subscription; interval: NodeJS.Timeout; userId: string
  * Isolation à la source : périmètre du client résolu à la connexion, puis
  * RE-RÉSOLU périodiquement (60 s) + sur event `refresh` (ex. après un partage
  * reçu) — évite qu'un nouveau véhicule partagé n'apparaisse qu'à la reco.
+ *
+ * CORS : `origin` est une FONCTION (évaluée à chaque connexion, pas à l'import
+ * du module) pour pouvoir lire CORS_ORIGINS — un objet littéral ici serait figé
+ * AVANT que ConfigModule ne charge `.env` (le décorateur s'évalue à l'import,
+ * bien avant NestFactory.create()). Même logique que main.ts : liste définie →
+ * restreint (Origin absent, càd apps mobiles natives, toujours admis) ; absente
+ * → ouvert (comportement historique).
  */
-@WebSocketGateway({ cors: { origin: "*" } })
+@WebSocketGateway({
+  cors: {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      const corsOrigins = (process.env.CORS_ORIGINS ?? "")
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
+      if (corsOrigins.length === 0 || !origin || corsOrigins.includes(origin)) return callback(null, true);
+      callback(new Error("Origin non autorisée"), false);
+    },
+  },
+})
 export class PositionsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly log = new Logger(PositionsGateway.name);
   private readonly clients = new Map<string, ClientState>();
