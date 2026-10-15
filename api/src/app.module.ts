@@ -13,7 +13,6 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { ReportsModule } from "./reports/reports.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SharesModule } from "./shares/shares.module";
-import { SubaccountsModule } from "./subaccounts/subaccounts.module";
 import { AdminModule } from "./admin/admin.module";
 import { SupabaseModule } from "./supabase/supabase.module";
 import { TraccarModule } from "./traccar/traccar.module";
@@ -34,7 +33,6 @@ import { VehiclesModule } from "./vehicles/vehicles.module";
     GeofencesModule,
     AuthModule,
     SharesModule,
-    SubaccountsModule,
     AdminModule,
     RealtimeModule,
   ],
