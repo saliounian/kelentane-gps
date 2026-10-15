@@ -1,11 +1,24 @@
 import { HttpException } from "@nestjs/common";
 import { VehiclesService } from "./vehicles.service";
 import { AccessService, type AccessRole, type AllowedSet } from "../supabase/access.service";
+import type { SupabaseService } from "../supabase/supabase.service";
 
 const IMEI = "868720065811725";
 
 function tDevice(id: number, uniqueId: string) {
   return { id, name: `dev${id}`, uniqueId, status: "offline", lastUpdate: null };
+}
+
+/** Mock SupabaseService : reproduit la lecture clients.is_admin de AdminGuard. */
+function fakeSupa(isAdmin: boolean | null): SupabaseService {
+  const chain: Record<string, unknown> = {};
+  const self = () => chain;
+  Object.assign(chain, {
+    select: self,
+    eq: self,
+    maybeSingle: async () => ({ data: isAdmin === null ? null : { is_admin: isAdmin } }),
+  });
+  return { client: { from: () => chain } } as unknown as SupabaseService;
 }
 
 const statusOf = async (p: Promise<unknown>): Promise<number> => {
@@ -18,7 +31,7 @@ const statusOf = async (p: Promise<unknown>): Promise<number> => {
   }
 };
 
-describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe requis, C2)", () => {
+describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe requis, C2 ; création réservée admin, C3)", () => {
   let traccar: { getFleet: jest.Mock; createDevice: jest.Mock };
   let devices: {
     existsByImei: jest.Mock;
@@ -27,6 +40,7 @@ describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe r
     addAccess: jest.Mock;
   };
   let service: VehiclesService;
+  let adminService: VehiclesService;
 
   beforeEach(() => {
     traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [], positions: [] }), createDevice: jest.fn() };
@@ -36,14 +50,16 @@ describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe r
       insertAccess: jest.fn(),
       addAccess: jest.fn(),
     };
-    service = new VehiclesService(traccar as never, devices as never, {} as AccessService);
+    // Compte NON-admin par défaut : seul le chemin IMEI-déjà-connu doit réussir.
+    service = new VehiclesService(traccar as never, devices as never, {} as AccessService, fakeSupa(false));
+    adminService = new VehiclesService(traccar as never, devices as never, {} as AccessService, fakeSupa(true));
   });
 
   it("IMEI invalide → 400", async () => {
     expect(await statusOf(service.enroll("u1", "abc"))).toBe(400);
   });
 
-  it("device déjà en base app → délègue à addAccess (mot de passe requis)", async () => {
+  it("device déjà en base app → délègue à addAccess (mot de passe requis, non-admin OK)", async () => {
     devices.existsByImei.mockResolvedValue(true);
     devices.addAccess.mockResolvedValue("ok");
     jest.spyOn(service, "list").mockResolvedValue([{ imei: IMEI, id: 7 } as never]);
@@ -71,7 +87,7 @@ describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe r
     expect(traccar.createDevice).not.toHaveBeenCalled();
   });
 
-  it("device présent sur Traccar → avec mot de passe, passe par addAccess", async () => {
+  it("device présent sur Traccar → avec mot de passe, passe par addAccess (non-admin OK)", async () => {
     devices.existsByImei.mockResolvedValue(false);
     traccar.getFleet.mockResolvedValue({ devices: [tDevice(42, IMEI)], positions: [] });
     devices.addAccess.mockResolvedValue("ok");
@@ -82,15 +98,24 @@ describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe r
     expect(vm.id).toBe(42);
   });
 
-  it("device absent partout → création Traccar (premier accès, mdp défaut en base)", async () => {
+  it("IMEI neuf + compte NON-admin → 403 générique, RIEN n'est créé (Traccar ni devices)", async () => {
+    devices.existsByImei.mockResolvedValue(false);
+    traccar.getFleet.mockResolvedValue({ devices: [], positions: [] });
+    expect(await statusOf(service.enroll("u1", IMEI, "Ma voiture"))).toBe(403);
+    expect(traccar.createDevice).not.toHaveBeenCalled();
+    expect(devices.insertOwned).not.toHaveBeenCalled();
+    expect(devices.insertAccess).not.toHaveBeenCalled();
+  });
+
+  it("IMEI neuf + compte admin → création Traccar (premier accès, mdp défaut en base)", async () => {
     devices.existsByImei.mockResolvedValue(false);
     traccar.getFleet.mockResolvedValue({ devices: [], positions: [] });
     traccar.createDevice.mockResolvedValue({ id: 99, uniqueId: IMEI });
     devices.insertOwned.mockResolvedValue({ id: "row-1" });
-    const vm = await service.enroll("u1", IMEI, "Ma voiture");
+    const vm = await adminService.enroll("admin1", IMEI, "Ma voiture");
     expect(traccar.createDevice).toHaveBeenCalled();
-    expect(devices.insertOwned).toHaveBeenCalledWith("u1", IMEI, 99, expect.any(Object));
-    expect(devices.insertAccess).toHaveBeenCalledWith("row-1", "u1", "action");
+    expect(devices.insertOwned).toHaveBeenCalledWith("admin1", IMEI, 99, expect.any(Object));
+    expect(devices.insertAccess).toHaveBeenCalledWith("row-1", "admin1", "action");
     expect(vm.id).toBe(99);
     expect(vm.accessRole).toBe("action");
     expect(vm.accessStatus).toBe("active");
@@ -99,7 +124,7 @@ describe("VehiclesService.enroll (device NEUF ou déjà connu → mot de passe r
   it("Traccar injoignable → l'erreur remonte (PAS un faux succès)", async () => {
     devices.existsByImei.mockResolvedValue(false);
     traccar.getFleet.mockRejectedValue(new Error("EAI_AGAIN traccar"));
-    await expect(service.enroll("u1", IMEI)).rejects.toThrow("EAI_AGAIN");
+    await expect(adminService.enroll("admin1", IMEI)).rejects.toThrow("EAI_AGAIN");
     expect(traccar.createDevice).not.toHaveBeenCalled();
   });
 });
@@ -110,7 +135,7 @@ describe("VehiclesService.addAccess (ajout coexistant §3)", () => {
 
   beforeEach(() => {
     devices = { addAccess: jest.fn() };
-    service = new VehiclesService({} as never, devices as never, {} as AccessService);
+    service = new VehiclesService({} as never, devices as never, {} as AccessService, {} as SupabaseService);
   });
 
   it("IMEI + mot de passe OK → renvoie le VM (coexistence)", async () => {
@@ -162,7 +187,7 @@ describe("VehiclesService.patch — écriture métadonnées gatée 'action' (H1)
   it("consultation → 403 (aucune écriture)", async () => {
     const traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }) };
     const devices = { upsertByImei: jest.fn() };
-    const service = new VehiclesService(traccar as never, devices as never, makeAccess("consultation"));
+    const service = new VehiclesService(traccar as never, devices as never, makeAccess("consultation"), {} as SupabaseService);
     expect(await statusOf(service.patch(15, { name: "Young" }, "u1"))).toBe(403);
     expect(devices.upsertByImei).not.toHaveBeenCalled();
   });
@@ -170,7 +195,7 @@ describe("VehiclesService.patch — écriture métadonnées gatée 'action' (H1)
   it("action → réussit et transmet le vrai userId authentifié à upsertByImei", async () => {
     const traccar = { getFleet: jest.fn().mockResolvedValue({ devices: [tDevice(15, IMEI)], positions: [] }) };
     const devices = { upsertByImei: jest.fn().mockResolvedValue({ owner_id: "real-user" }) };
-    const service = new VehiclesService(traccar as never, devices as never, makeAccess("action"));
+    const service = new VehiclesService(traccar as never, devices as never, makeAccess("action"), {} as SupabaseService);
 
     await service.patch(15, { name: "Young" }, "real-user");
 
@@ -181,7 +206,7 @@ describe("VehiclesService.patch — écriture métadonnées gatée 'action' (H1)
 describe("VehiclesService.setDevicePassword", () => {
   it("délègue à devices.setPassword", async () => {
     const devices = { setPassword: jest.fn().mockResolvedValue(true) };
-    const service = new VehiclesService({} as never, devices as never, {} as AccessService);
+    const service = new VehiclesService({} as never, devices as never, {} as AccessService, {} as SupabaseService);
     expect(await service.setDevicePassword(5, "u1", "secret")).toBe(true);
     expect(devices.setPassword).toHaveBeenCalledWith(5, "u1", "secret");
   });

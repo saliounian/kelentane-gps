@@ -1,7 +1,9 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
 import { TraccarService } from "../traccar/traccar.service";
 import { DevicesService, type DevicePatch } from "../supabase/devices.service";
 import { AccessService } from "../supabase/access.service";
+import { SupabaseService } from "../supabase/supabase.service";
+import { isAdminUser } from "../auth/admin.guard";
 import type { TraccarDevice, TraccarPosition } from "../traccar/traccar.types";
 import type { VehicleVM } from "./vehicle.vm";
 import { mergeRow, toVM } from "./vehicle.mapper";
@@ -12,6 +14,7 @@ export class VehiclesService {
     private readonly traccar: TraccarService,
     private readonly devices: DevicesService,
     private readonly access: AccessService,
+    private readonly supa: SupabaseService,
   ) {}
 
   /**
@@ -67,7 +70,9 @@ export class VehiclesService {
   }
 
   /**
-   * Enrôle un device NEUF (création cœur GPS) — chemin admin / auto-détection (§2).
+   * Enrôle un device — IMEI déjà connu (base app ou Traccar) → chemin §3
+   * (mot de passe device, anti-énumération). IMEI RÉELLEMENT NEUF → création
+   * cœur GPS, réservée aux ADMINS (clients.is_admin = true).
    *
    * SÉCURITÉ (C2) : un device DÉJÀ connu — présent en base app OU déjà dans la flotte
    * Traccar — n'est JAMAIS adopté sans mot de passe. Il est routé par le MÊME chemin
@@ -75,9 +80,15 @@ export class VehiclesService {
    * erreur générique unique (anti-énumération), rate-limit en base. Plus aucun cas
    * particulier « adoption sans mot de passe ».
    *
+   * SÉCURITÉ (C3) : la CRÉATION d'un IMEI inconnu est réservée à un admin — vérifié
+   * EN BASE (même lecture que AdminGuard) AVANT tout appel à traccar.createDevice.
+   * Un non-admin reçoit un 403 générique ; rien n'est créé ni dans Traccar ni dans
+   * `devices`.
+   *
    * Seul un IMEI RÉELLEMENT NEUF (inconnu de la base ET de Traccar) crée un device :
-   * le créateur en devient premier accès (rôle 'action'), et la colonne `device_password`
-   * reçoit son défaut hashé (123456) en base (NOT NULL) — jamais vide/null.
+   * le créateur (admin) en devient premier accès (rôle 'action'), et la colonne
+   * `device_password` reçoit son défaut hashé (123456) en base (NOT NULL) — jamais
+   * vide/null.
    */
   async enroll(userId: string, imei: string, name?: string, devicePassword?: string): Promise<VehicleVM> {
     if (!/^\d{10,17}$/.test(imei)) throw new BadRequestException("IMEI invalide");
@@ -94,7 +105,11 @@ export class VehiclesService {
       return this.addAccess(userId, imei, devicePassword ?? "");
     }
 
-    // IMEI réellement neuf → création cœur GPS + premier accès.
+    // IMEI réellement neuf → réservé admin. Contrôle AVANT toute création.
+    if (!(await isAdminUser(this.supa, userId))) {
+      throw new ForbiddenException("Accès administrateur requis.");
+    }
+
     const label = name?.trim() || `Boîtier ${imei.slice(-4)}`;
     const dev = await this.traccar.createDevice(label, imei);
     const row = await this.devices.insertOwned(userId, imei, dev.id, { name: label });
