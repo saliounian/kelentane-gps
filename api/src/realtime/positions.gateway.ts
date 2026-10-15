@@ -11,6 +11,7 @@ import { SupabaseService } from "../supabase/supabase.service";
 import { AccessService, type AllowedSet } from "../supabase/access.service";
 import { VehiclesService } from "../vehicles/vehicles.service";
 import { TraccarRealtimeService } from "./traccar-realtime.service";
+import { corsOrigin } from "../cors-origin";
 
 const ALLOWED_REFRESH_MS = 60_000; // re-résolution du périmètre toutes les 60 s
 
@@ -23,23 +24,11 @@ type ClientState = { sub: Subscription; interval: NodeJS.Timeout; userId: string
  * reçu) — évite qu'un nouveau véhicule partagé n'apparaisse qu'à la reco.
  *
  * CORS : `origin` est une FONCTION (évaluée à chaque connexion, pas à l'import
- * du module) pour pouvoir lire CORS_ORIGINS — un objet littéral ici serait figé
- * AVANT que ConfigModule ne charge `.env` (le décorateur s'évalue à l'import,
- * bien avant NestFactory.create()). Même logique que main.ts : liste définie →
- * restreint (Origin absent, càd apps mobiles natives, toujours admis) ; absente
- * → ouvert (comportement historique).
+ * du module) pour pouvoir lire CORS_ORIGINS — voir ../cors-origin.ts, partagée
+ * avec main.ts (origine refusée → callback(null, false), pas d'erreur).
  */
 @WebSocketGateway({
-  cors: {
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      const corsOrigins = (process.env.CORS_ORIGINS ?? "")
-        .split(",")
-        .map((o) => o.trim())
-        .filter(Boolean);
-      if (corsOrigins.length === 0 || !origin || corsOrigins.includes(origin)) return callback(null, true);
-      callback(new Error("Origin non autorisée"), false);
-    },
-  },
+  cors: { origin: corsOrigin },
 })
 export class PositionsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly log = new Logger(PositionsGateway.name);
